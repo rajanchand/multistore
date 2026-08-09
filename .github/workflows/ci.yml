@@ -54,6 +54,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate
       - run: pnpm --filter @repo/database exec prisma migrate deploy
+      # Build workspace deps (@repo/types, etc.) before seed; turbo db:seed also dependsOn ^build
+      - run: pnpm --filter "./packages/*" --filter "!@repo/database" build
       - run: pnpm db:seed
       - run: pnpm lint
       - run: pnpm typecheck

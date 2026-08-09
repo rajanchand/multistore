@@ -21,7 +21,7 @@
     "db:generate": "pnpm --filter @repo/database db:generate",
     "db:migrate": "pnpm --filter @repo/database db:migrate",
     "db:migrate:deploy": "pnpm --filter @repo/database db:migrate:deploy",
-    "db:seed": "pnpm --filter @repo/database db:seed",
+    "db:seed": "turbo run db:seed --filter=@repo/database",
     "db:studio": "pnpm --filter @repo/database db:studio",
     "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker/docker-compose.yml down"
