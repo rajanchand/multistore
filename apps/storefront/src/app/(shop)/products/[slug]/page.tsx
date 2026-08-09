@@ -104,15 +104,15 @@ export default async function ProductPage({ params }: { params: { slug: string }
       <div className="grid gap-10 lg:grid-cols-2">
         <ProductGallery images={galleryImages} alt={product.name} />
         <div>
-          <p className="text-sm uppercase tracking-wide text-slate-500">{product.brand}</p>
-          <h1 className="font-display mt-2 text-4xl font-semibold text-[var(--nm-ink)]">
+          <p className="text-sm font-medium text-[var(--nm-muted)]">{product.brand}</p>
+          <h1 className="font-display mt-2 text-3xl font-bold tracking-tight text-[var(--nm-ink)] sm:text-4xl">
             {product.name}
           </h1>
           {variant && (
-            <p className="mt-4 text-2xl font-semibold">
+            <p className="mt-4 text-2xl font-semibold text-[var(--nm-ink)]">
               {formatMoney(variant.salePrice ?? variant.price)}
               {variant.salePrice != null && (
-                <span className="ml-2 text-base font-normal text-slate-400 line-through">
+                <span className="ml-2 text-base font-normal text-[var(--nm-muted)] line-through">
                   {formatMoney(variant.price)}
                 </span>
               )}
@@ -125,7 +125,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
             {variant?.deliveryEnabled && <Badge variant="secondary">Delivery</Badge>}
             {variant?.clickCollectEnabled && <Badge variant="secondary">Click & collect</Badge>}
           </div>
-          <p className="mt-6 text-slate-600">{product.shortDescription}</p>
+          <p className="mt-6 text-[var(--nm-muted)]">{product.shortDescription}</p>
           {variant && (
             <div className="mt-8">
               <AddToCartButton
@@ -137,14 +137,17 @@ export default async function ProductPage({ params }: { params: { slug: string }
           )}
           {product.variants.length > 1 && (
             <div className="mt-8">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--nm-muted)]">
                 Variants
               </h2>
               <ul className="mt-3 space-y-2 text-sm">
                 {product.variants.map((v) => (
-                  <li key={v.id} className="flex justify-between border-b border-emerald-900/10 py-2">
+                  <li
+                    key={v.id}
+                    className="flex justify-between border-b border-[var(--nm-line)] py-2.5"
+                  >
                     <span>{v.name}</span>
-                    <span>{formatMoney(v.salePrice ?? v.price)}</span>
+                    <span className="font-medium">{formatMoney(v.salePrice ?? v.price)}</span>
                   </li>
                 ))}
               </ul>
@@ -152,8 +155,8 @@ export default async function ProductPage({ params }: { params: { slug: string }
           )}
           {product.description && (
             <div className="mt-10 max-w-none text-sm">
-              <h2 className="font-display text-2xl font-semibold">Details</h2>
-              <p className="mt-3 whitespace-pre-wrap text-slate-600">{product.description}</p>
+              <h2 className="font-display text-2xl font-bold">Details</h2>
+              <p className="mt-3 whitespace-pre-wrap text-[var(--nm-muted)]">{product.description}</p>
             </div>
           )}
         </div>

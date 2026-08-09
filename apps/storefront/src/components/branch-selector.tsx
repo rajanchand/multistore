@@ -39,7 +39,7 @@ export function BranchSelector() {
     return (
       <Link
         href="/select-location"
-        className="inline-flex h-10 max-w-[11rem] items-center rounded-full border border-emerald-900/10 bg-white px-3 text-sm font-medium text-[var(--nm-forest)]"
+        className="inline-flex h-11 max-w-[11rem] items-center rounded-xl border border-[var(--nm-line)] bg-white px-3 text-sm font-semibold text-[var(--nm-accent)]"
       >
         Choose store
       </Link>
@@ -49,7 +49,7 @@ export function BranchSelector() {
   return (
     <select
       aria-label="Select branch"
-      className="h-10 max-w-[11rem] rounded-full border border-emerald-900/10 bg-white px-2 text-sm"
+      className="h-11 max-w-[11rem] rounded-xl border border-[var(--nm-line)] bg-white px-2 text-sm font-medium text-[var(--nm-ink)]"
       value={selected}
       onChange={(e) => onChange(e.target.value)}
     >

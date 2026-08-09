@@ -10,7 +10,6 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@repo/ui';
 
 export interface HeroSlide {
   id: string;
@@ -22,13 +21,13 @@ export interface HeroSlide {
   mobileImage?: string | null;
 }
 
-const AUTOPLAY_MS = 5000;
+const AUTOPLAY_MS = 5500;
 
 const PLACEHOLDER_SLIDES: HeroSlide[] = [
   {
     id: 'placeholder-1',
     title: 'Your local shop, online',
-    body: 'Pick your branch for accurate prices and stock. Delivery or click & collect from stores across the UK.',
+    body: 'Pick a branch for live prices and stock — delivery or click & collect.',
     ctaLabel: 'Shop now',
     ctaUrl: '/products',
     image:
@@ -38,10 +37,10 @@ const PLACEHOLDER_SLIDES: HeroSlide[] = [
   },
   {
     id: 'placeholder-2',
-    title: 'Fresh deals at your branch',
-    body: 'Energy drinks, snacks, and everyday essentials — priced for the store you shop.',
-    ctaLabel: 'Browse categories',
-    ctaUrl: '/categories/energy-drinks',
+    title: 'Everyday essentials nearby',
+    body: 'Drinks, snacks, and household picks priced for the store you shop.',
+    ctaLabel: 'Browse shop',
+    ctaUrl: '/products',
     image:
       'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1800&q=80',
     mobileImage:
@@ -49,8 +48,8 @@ const PLACEHOLDER_SLIDES: HeroSlide[] = [
   },
   {
     id: 'placeholder-3',
-    title: 'Click & collect made easy',
-    body: 'Order online and pick up from your nearest Neighbourhood Market when it suits you.',
+    title: 'Click & collect when ready',
+    body: 'Order online, pick up from your nearest Neighbourhood Market.',
     ctaLabel: 'View products',
     ctaUrl: '/products',
     image:
@@ -129,7 +128,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
     <section
       aria-roledescription="carousel"
       aria-labelledby={`${regionId}-label`}
-      className="relative overflow-hidden bg-slate-900 text-white outline-none"
+      className="relative overflow-hidden outline-none"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
@@ -146,7 +145,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
       </h2>
       <div ref={liveRef} className="sr-only" aria-live="polite" aria-atomic="true" />
 
-      <div className="relative min-h-[70vh] w-full">
+      <div className="relative min-h-[min(88vh,720px)] w-full md:min-h-[min(78vh,680px)]">
         {items.map((slide, i) => {
           const active = i === index;
           const desktopSrc = slide.image ?? PLACEHOLDER_SLIDES[i % PLACEHOLDER_SLIDES.length]!.image!;
@@ -171,39 +170,50 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                 <img
                   src={desktopSrc}
                   alt=""
-                  className="absolute inset-0 h-full w-full object-cover"
+                  className={[
+                    'absolute inset-0 h-full w-full object-cover',
+                    active && !reducedMotion ? 'nm-hero-media' : '',
+                  ].join(' ')}
                   draggable={false}
                 />
               </picture>
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-900/55 to-indigo-950/35" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.12),transparent_45%)]" />
 
-              <div className="relative mx-auto flex min-h-[70vh] max-w-6xl flex-col justify-center px-4 py-20 md:px-6">
-                <p className="text-sm font-semibold uppercase tracking-[0.25em] text-indigo-100">
-                  Neighbourhood Market
+              {/* Light scrim for readability — keeps theme bright, no indigo wash */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[var(--nm-canvas)] via-[var(--nm-canvas)]/75 to-transparent md:bg-gradient-to-r md:from-[var(--nm-canvas)] md:via-[var(--nm-canvas)]/80 md:to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-[var(--nm-soft)]/30" />
+
+              <div
+                className={[
+                  'relative mx-auto flex min-h-[min(88vh,720px)] max-w-6xl flex-col justify-end px-4 pb-16 pt-24 md:min-h-[min(78vh,680px)] md:justify-center md:px-6 md:pb-20',
+                  active && !reducedMotion ? 'nm-hero-copy' : '',
+                ].join(' ')}
+              >
+                <p className="font-display max-w-xl text-4xl font-bold leading-[1.05] tracking-tight text-[var(--nm-ink)] sm:text-5xl md:text-6xl lg:text-7xl">
+                  Neighbourhood
+                  <br />
+                  <span className="text-[var(--nm-accent)]">Market</span>
                 </p>
-                <h1 className="mt-4 max-w-2xl font-[Fraunces] text-5xl font-bold leading-tight md:text-6xl">
+                <h1 className="mt-5 max-w-lg text-xl font-semibold leading-snug text-[var(--nm-ink)] sm:text-2xl md:text-3xl">
                   {slide.title}
                 </h1>
                 {slide.body ? (
-                  <p className="mt-4 max-w-xl text-lg text-indigo-50/90">{slide.body}</p>
+                  <p className="mt-3 max-w-md text-base leading-relaxed text-[var(--nm-muted)] sm:text-lg">
+                    {slide.body}
+                  </p>
                 ) : null}
                 <div className="mt-8 flex flex-wrap gap-3">
-                  <Button asChild size="lg" className="bg-white text-indigo-700 hover:bg-indigo-50">
-                    <Link href="/products">Shop now</Link>
-                  </Button>
-                  {(slide.ctaUrl || slide.ctaLabel) && (
-                    <Button
-                      asChild
-                      size="lg"
-                      variant="outline"
-                      className="border-white/40 bg-transparent text-white hover:bg-white/10"
-                    >
-                      <Link href={slide.ctaUrl ?? '/products'}>
-                        {slide.ctaLabel ?? 'Learn more'}
-                      </Link>
-                    </Button>
-                  )}
+                  <Link
+                    href={slide.ctaUrl ?? '/products'}
+                    className="inline-flex h-12 min-w-[8.5rem] items-center justify-center rounded-xl bg-[var(--nm-accent)] px-6 text-sm font-semibold text-white transition hover:bg-[var(--nm-accent-hover)]"
+                  >
+                    {slide.ctaLabel ?? 'Shop now'}
+                  </Link>
+                  <Link
+                    href="/select-location"
+                    className="inline-flex h-12 min-w-[8.5rem] items-center justify-center rounded-xl border border-[var(--nm-line)] bg-white/80 px-6 text-sm font-semibold text-[var(--nm-ink)] transition hover:bg-white"
+                  >
+                    Choose store
+                  </Link>
                 </div>
               </div>
             </div>
@@ -216,7 +226,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
           <button
             type="button"
             onClick={goPrev}
-            className="absolute left-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-slate-950/40 text-white backdrop-blur-sm transition hover:bg-slate-950/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:left-6"
+            className="absolute left-3 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-[var(--nm-line)] bg-white/90 text-[var(--nm-ink)] transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nm-accent)] md:left-6 md:flex"
             aria-label="Previous slide"
           >
             <ChevronLeft className="h-5 w-5" aria-hidden />
@@ -224,14 +234,14 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
           <button
             type="button"
             onClick={goNext}
-            className="absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-slate-950/40 text-white backdrop-blur-sm transition hover:bg-slate-950/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:right-6"
+            className="absolute right-3 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-[var(--nm-line)] bg-white/90 text-[var(--nm-ink)] transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nm-accent)] md:right-6 md:flex"
             aria-label="Next slide"
           >
             <ChevronRight className="h-5 w-5" aria-hidden />
           </button>
 
           <div
-            className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2"
+            className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 md:bottom-7"
             role="tablist"
             aria-label="Choose slide"
           >
@@ -244,8 +254,10 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                 aria-label={`Go to slide ${i + 1}: ${slide.title}`}
                 onClick={() => goTo(i)}
                 className={[
-                  'h-2.5 rounded-full transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
-                  i === index ? 'w-8 bg-white' : 'w-2.5 bg-white/45 hover:bg-white/70',
+                  'h-2 rounded-md transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nm-accent)]',
+                  i === index
+                    ? 'w-7 bg-[var(--nm-accent)]'
+                    : 'w-2 bg-[var(--nm-ink)]/25 hover:bg-[var(--nm-ink)]/40',
                 ].join(' ')}
               />
             ))}

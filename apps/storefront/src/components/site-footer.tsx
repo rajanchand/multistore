@@ -20,69 +20,71 @@ export async function SiteFooter() {
   const socialEntries = Object.entries(social).filter(([, url]) => Boolean(url));
 
   return (
-    <footer className="mt-20 border-t border-emerald-900/10 bg-[var(--nm-ink)] text-emerald-50">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-4">
+    <footer className="mt-16 border-t border-[var(--nm-line)] bg-white">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 md:grid-cols-4">
         <div className="md:col-span-2">
-          <p className="font-display text-2xl font-semibold">{storeName}</p>
-          <p className="mt-3 max-w-md text-sm leading-relaxed text-emerald-100/75">{tagline}</p>
+          <p className="font-display text-2xl font-bold tracking-tight text-[var(--nm-ink)]">
+            {storeName}
+          </p>
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-[var(--nm-muted)]">{tagline}</p>
           {settings?.delivery?.deliveryNotes && (
-            <p className="mt-4 max-w-md text-xs text-emerald-100/60">
+            <p className="mt-4 max-w-md text-xs text-[var(--nm-muted)]">
               Delivery: {settings.delivery.estimatedDeliveryHours ?? 'See checkout'} —{' '}
               {settings.delivery.deliveryNotes}
             </p>
           )}
         </div>
         <div className="text-sm">
-          <p className="font-semibold text-white">Help</p>
-          <ul className="mt-3 space-y-2 text-emerald-100/75">
+          <p className="font-semibold text-[var(--nm-ink)]">Help</p>
+          <ul className="mt-3 space-y-2.5 text-[var(--nm-muted)]">
             <li>
-              <Link href="/faq" className="hover:text-white">
+              <Link href="/faq" className="hover:text-[var(--nm-accent)]">
                 FAQ
               </Link>
             </li>
             <li>
-              <Link href="/returns" className="hover:text-white">
+              <Link href="/returns" className="hover:text-[var(--nm-accent)]">
                 Returns
               </Link>
             </li>
             <li>
-              <Link href="/contact" className="hover:text-white">
+              <Link href="/contact" className="hover:text-[var(--nm-accent)]">
                 Contact
               </Link>
             </li>
             <li>
-              <Link href="/track-order" className="hover:text-white">
+              <Link href="/track-order" className="hover:text-[var(--nm-accent)]">
                 Track order
               </Link>
             </li>
           </ul>
         </div>
         <div className="text-sm">
-          <p className="font-semibold text-white">
+          <p className="font-semibold text-[var(--nm-ink)]">
             {socialEntries.length ? 'Social' : 'Legal'}
           </p>
-          <ul className="mt-3 space-y-2 text-emerald-100/75">
+          <ul className="mt-3 space-y-2.5 text-[var(--nm-muted)]">
             {socialEntries.map(([key, url]) => (
               <li key={key}>
-                <a href={url} target="_blank" rel="noreferrer" className="hover:text-white">
+                <a href={url} target="_blank" rel="noreferrer" className="hover:text-[var(--nm-accent)]">
                   {SOCIAL_LABELS[key] ?? key}
                 </a>
               </li>
             ))}
             <li>
-              <Link href="/privacy" className="hover:text-white">
+              <Link href="/privacy" className="hover:text-[var(--nm-accent)]">
                 Privacy
               </Link>
             </li>
             <li>
-              <Link href="/terms" className="hover:text-white">
+              <Link href="/terms" className="hover:text-[var(--nm-accent)]">
                 Terms
               </Link>
             </li>
           </ul>
         </div>
       </div>
-      <div className="border-t border-white/10 py-4 text-center text-xs text-emerald-100/50">
+      <div className="border-t border-[var(--nm-line)] py-4 text-center text-xs text-[var(--nm-muted)]">
         © {new Date().getFullYear()} {storeName}
       </div>
     </footer>

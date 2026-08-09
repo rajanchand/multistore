@@ -1,16 +1,16 @@
 import type { Metadata } from 'next';
-import { DM_Sans, Fraunces } from 'next/font/google';
+import { Bricolage_Grotesque, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 
-const dmSans = DM_Sans({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  variable: '--font-dm-sans',
+  variable: '--font-jakarta',
   display: 'swap',
 });
 
-const fraunces = Fraunces({
+const bricolage = Bricolage_Grotesque({
   subsets: ['latin'],
-  variable: '--font-fraunces',
+  variable: '--font-bricolage',
   display: 'swap',
 });
 
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-GB" className={`${dmSans.variable} ${fraunces.variable}`}>
+    <html lang="en-GB" className={`${jakarta.variable} ${bricolage.variable}`}>
       <body className="min-h-screen text-foreground antialiased">{children}</body>
     </html>
   );

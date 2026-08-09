@@ -87,27 +87,19 @@ export function LocationGate({ nextPath = '/' }: { nextPath?: string }) {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 overflow-hidden"
-        style={{
-          background:
-            'radial-gradient(900px 420px at 15% 10%, rgba(47,158,107,0.18), transparent 55%), radial-gradient(700px 380px at 90% 20%, rgba(196,123,43,0.12), transparent 50%), linear-gradient(165deg, #f7faf8 0%, #e8f2ec 45%, #f3efe6 100%)',
-        }}
-      />
-
       <div className="nm-animate-in relative w-full max-w-xl">
-        <p className="font-display text-center text-sm font-semibold uppercase tracking-[0.2em] text-[var(--nm-forest)]">
-          Neighbourhood Market
+        <p className="font-display text-center text-4xl font-bold tracking-tight text-[var(--nm-ink)] sm:text-5xl">
+          Neighbourhood
+          <span className="text-[var(--nm-accent)]"> Market</span>
         </p>
 
         {mode === 'find' ? (
-          <div className="mt-4 rounded-3xl border border-emerald-900/10 bg-white/90 p-6 shadow-lg backdrop-blur sm:p-8">
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-[var(--nm-ink)] sm:text-4xl">
-              Welcome
+          <div className="mt-8 border-t border-[var(--nm-line)] bg-white/70 px-1 py-8 backdrop-blur sm:px-2">
+            <h1 className="text-xl font-semibold text-[var(--nm-ink)] sm:text-2xl">
+              Choose your store
             </h1>
-            <p className="mt-3 text-base text-slate-600">
-              Please enter your postal code or choose your location to shop your nearest branch.
+            <p className="mt-2 text-sm text-[var(--nm-muted)]">
+              Enter your postcode or pick a branch for local prices and stock.
             </p>
 
             <form onSubmit={findByPostcode} className="mt-6 space-y-3">
@@ -116,7 +108,7 @@ export function LocationGate({ nextPath = '/' }: { nextPath?: string }) {
               </label>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <div className="relative flex-1">
-                  <Navigation className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Navigation className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--nm-muted)]" />
                   <input
                     id="postcode"
                     name="postcode"
@@ -125,14 +117,14 @@ export function LocationGate({ nextPath = '/' }: { nextPath?: string }) {
                     placeholder="e.g. G1 1AA"
                     value={postcode}
                     onChange={(e) => setPostcode(e.target.value)}
-                    className="h-12 w-full rounded-2xl border border-emerald-900/15 bg-white pl-10 pr-3 text-base outline-none ring-[var(--nm-leaf)]/30 focus:ring-2"
+                    className="h-12 w-full rounded-xl border border-[var(--nm-line)] bg-white pl-10 pr-3 text-base outline-none ring-[var(--nm-accent)]/25 focus:ring-2"
                     required
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={loading || !postcode.trim()}
-                  className="h-12 rounded-2xl bg-[var(--nm-forest)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--nm-leaf)] disabled:opacity-60"
+                  className="h-12 rounded-xl bg-[var(--nm-accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--nm-accent-hover)] disabled:opacity-60"
                 >
                   {loading ? 'Finding…' : 'Find nearest'}
                 </button>
@@ -146,8 +138,8 @@ export function LocationGate({ nextPath = '/' }: { nextPath?: string }) {
             )}
 
             <div className="mt-8">
-              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700">
-                <Store className="h-4 w-4 text-[var(--nm-forest)]" />
+              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-[var(--nm-ink)]">
+                <Store className="h-4 w-4 text-[var(--nm-accent)]" />
                 Or choose a location
               </div>
               <ul className="grid gap-2 sm:grid-cols-2">
@@ -156,12 +148,12 @@ export function LocationGate({ nextPath = '/' }: { nextPath?: string }) {
                     <button
                       type="button"
                       onClick={() => chooseBranch(b)}
-                      className="flex w-full items-start gap-3 rounded-2xl border border-emerald-900/10 bg-[var(--nm-mist)]/50 px-3 py-3 text-left transition hover:border-[var(--nm-forest)]/40 hover:bg-white"
+                      className="flex min-h-[48px] w-full items-start gap-3 rounded-xl border border-[var(--nm-line)] bg-[var(--nm-soft)]/50 px-3 py-3 text-left transition hover:border-[var(--nm-accent)]/40 hover:bg-white"
                     >
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--nm-forest)]" />
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--nm-accent)]" />
                       <span>
                         <span className="block text-sm font-semibold text-[var(--nm-ink)]">{b.name}</span>
-                        <span className="block text-xs text-slate-500">
+                        <span className="block text-xs text-[var(--nm-muted)]">
                           {b.city} · {b.postcode}
                         </span>
                       </span>
@@ -171,7 +163,7 @@ export function LocationGate({ nextPath = '/' }: { nextPath?: string }) {
               </ul>
             </div>
 
-            <p className="mt-6 text-center text-xs text-slate-500">
+            <p className="mt-6 text-center text-xs text-[var(--nm-muted)]">
               <Link href="/privacy" className="underline-offset-2 hover:underline">
                 Privacy
               </Link>
@@ -182,20 +174,20 @@ export function LocationGate({ nextPath = '/' }: { nextPath?: string }) {
             </p>
           </div>
         ) : (
-          <div className="nm-animate-in-delay mt-4 rounded-3xl border border-emerald-900/10 bg-white/90 p-6 shadow-lg backdrop-blur sm:p-8">
-            <p className="text-sm font-medium uppercase tracking-wide text-[var(--nm-amber)]">Your store</p>
-            <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight text-[var(--nm-ink)] sm:text-4xl">
+          <div className="nm-animate-in-delay mt-8 border-t border-[var(--nm-line)] bg-white/70 px-1 py-8 backdrop-blur sm:px-2">
+            <p className="text-sm font-semibold text-[var(--nm-accent)]">Your store</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--nm-ink)] sm:text-3xl">
               Welcome to {suggested?.name}
             </h1>
-            <p className="mt-3 text-slate-600">
+            <p className="mt-3 text-[var(--nm-muted)]">
               {suggested?.addressLine1 ? `${suggested.addressLine1}, ` : ''}
               {suggested?.city}
               {suggested?.postcode ? ` · ${suggested.postcode}` : ''}
               {resolvedPostcode ? (
-                <span className="block text-sm text-slate-500">Matched from {resolvedPostcode}</span>
+                <span className="block text-sm">Matched from {resolvedPostcode}</span>
               ) : null}
               {suggested?.distanceKm != null ? (
-                <span className="mt-1 block text-sm text-slate-500">About {suggested.distanceKm} km away</span>
+                <span className="mt-1 block text-sm">About {suggested.distanceKm} km away</span>
               ) : null}
             </p>
 
@@ -203,7 +195,7 @@ export function LocationGate({ nextPath = '/' }: { nextPath?: string }) {
               <button
                 type="button"
                 onClick={confirmAndEnter}
-                className="h-12 flex-1 rounded-2xl bg-[var(--nm-forest)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--nm-leaf)]"
+                className="h-12 flex-1 rounded-xl bg-[var(--nm-accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--nm-accent-hover)]"
               >
                 Continue shopping
               </button>
@@ -214,7 +206,7 @@ export function LocationGate({ nextPath = '/' }: { nextPath?: string }) {
                   setSuggested(null);
                   setResolvedPostcode(null);
                 }}
-                className="h-12 rounded-2xl border border-emerald-900/15 bg-white px-5 text-sm font-semibold text-[var(--nm-ink)] transition hover:bg-[var(--nm-mist)]"
+                className="h-12 rounded-xl border border-[var(--nm-line)] bg-white px-5 text-sm font-semibold text-[var(--nm-ink)] transition hover:bg-[var(--nm-soft)]"
               >
                 Choose a different store
               </button>
@@ -222,7 +214,7 @@ export function LocationGate({ nextPath = '/' }: { nextPath?: string }) {
 
             {alternatives.length > 1 && (
               <div className="mt-8">
-                <p className="mb-2 text-sm font-medium text-slate-700">Other nearby options</p>
+                <p className="mb-2 text-sm font-medium text-[var(--nm-ink)]">Other nearby options</p>
                 <ul className="space-y-2">
                   {alternatives
                     .filter((b) => b.id !== suggested?.id)
@@ -231,14 +223,14 @@ export function LocationGate({ nextPath = '/' }: { nextPath?: string }) {
                         <button
                           type="button"
                           onClick={() => setSuggested(b)}
-                          className="flex w-full items-center justify-between rounded-xl border border-transparent px-3 py-2 text-left text-sm hover:border-emerald-900/10 hover:bg-[var(--nm-mist)]/60"
+                          className="flex min-h-[44px] w-full items-center justify-between rounded-xl border border-transparent px-3 py-2 text-left text-sm hover:border-[var(--nm-line)] hover:bg-[var(--nm-soft)]/60"
                         >
                           <span>
                             <span className="font-medium text-[var(--nm-ink)]">{b.name}</span>
-                            <span className="ml-2 text-slate-500">{b.city}</span>
+                            <span className="ml-2 text-[var(--nm-muted)]">{b.city}</span>
                           </span>
                           {b.distanceKm != null && (
-                            <span className="text-xs text-slate-500">{b.distanceKm} km</span>
+                            <span className="text-xs text-[var(--nm-muted)]">{b.distanceKm} km</span>
                           )}
                         </button>
                       </li>

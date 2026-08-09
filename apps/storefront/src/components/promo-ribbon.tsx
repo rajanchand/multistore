@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { Megaphone } from 'lucide-react';
 import { storeApi } from '@/lib/api';
 
 interface Banner {
@@ -25,23 +24,24 @@ export async function PromoRibbon() {
 
   if (!promo) {
     return (
-      <div className="bg-[var(--nm-ink)] text-center text-xs text-emerald-50">
-        <div className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-4 py-2">
-          <Megaphone className="h-3.5 w-3.5 text-[var(--nm-amber)]" />
-          <span>Free click &amp; collect at your local branch · Same-day when you order before 2pm</span>
+      <div className="border-b border-[var(--nm-line)] bg-[var(--nm-soft)] text-center text-xs text-[var(--nm-ink)]">
+        <div className="mx-auto max-w-6xl px-4 py-2.5 font-medium">
+          Free click &amp; collect at your local branch · Same-day when you order before 2pm
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-[var(--nm-ink)] text-center text-xs text-emerald-50">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-2 px-4 py-2">
-        <Megaphone className="h-3.5 w-3.5 text-[var(--nm-amber)]" />
-        <span className="font-medium">{promo.title}</span>
-        {promo.body && <span className="opacity-80">· {promo.body}</span>}
+    <div className="border-b border-[var(--nm-line)] bg-[var(--nm-soft)] text-center text-xs text-[var(--nm-ink)]">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-2 px-4 py-2.5">
+        <span className="font-semibold">{promo.title}</span>
+        {promo.body && <span className="text-[var(--nm-muted)]">· {promo.body}</span>}
         {promo.ctaUrl && (
-          <Link href={promo.ctaUrl} className="underline decoration-[var(--nm-amber)] underline-offset-2">
+          <Link
+            href={promo.ctaUrl}
+            className="font-semibold text-[var(--nm-accent)] underline-offset-2 hover:underline"
+          >
             {promo.ctaLabel ?? 'Shop now'}
           </Link>
         )}

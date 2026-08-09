@@ -17,22 +17,22 @@ export function ProductCard({
   const src =
     Array.isArray(product.images) && product.images[0]
       ? product.images[0]
-      : 'https://placehold.co/800x800/e8f2ec/1f6b4a?text=Neighbourhood';
+      : 'https://placehold.co/800x800/e7f4ef/0f7a63?text=Neighbourhood';
   const isRemote = src.startsWith('http');
 
   return (
     <Link
       href={`/products/${product.slug}`}
-      className="group overflow-hidden rounded-2xl border border-emerald-900/10 bg-white/90 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg"
+      className="group block transition duration-300 hover:-translate-y-0.5"
     >
-      <div className="relative aspect-[4/5] overflow-hidden bg-[var(--nm-mist)]">
+      <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-[var(--nm-soft)]">
         {isRemote ? (
           <Image
             src={src}
             alt={product.name}
             fill
             sizes="(max-width: 768px) 50vw, 25vw"
-            className="object-cover transition duration-500 group-hover:scale-105"
+            className="object-cover transition duration-500 group-hover:scale-[1.03]"
             unoptimized={src.includes('placehold.co') || src.startsWith('data:')}
           />
         ) : (
@@ -40,30 +40,28 @@ export function ProductCard({
           <img src={src} alt={product.name} className="h-full w-full object-cover" />
         )}
         {product.salePrice != null && (
-          <span className="absolute left-3 top-3 rounded-full bg-[var(--nm-amber)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+          <span className="absolute left-3 top-3 rounded-md bg-[var(--nm-highlight)] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--nm-ink)]">
             Sale
           </span>
         )}
-        {product.clickCollectEnabled !== false && (
-          <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-[var(--nm-forest)] backdrop-blur">
-            Click & collect
-          </span>
-        )}
       </div>
-      <div className="p-4">
-        <p className="font-medium leading-snug text-[var(--nm-ink)]">{product.name}</p>
-        <p className="mt-2 text-sm">
+      <div className="pt-3">
+        <p className="font-semibold leading-snug text-[var(--nm-ink)]">{product.name}</p>
+        <p className="mt-1.5 text-sm">
           {product.salePrice != null ? (
             <>
-              <span className="font-semibold text-[var(--nm-forest)]">
+              <span className="font-semibold text-[var(--nm-accent)]">
                 {formatMoney(product.salePrice)}
               </span>{' '}
-              <span className="text-slate-400 line-through">{formatMoney(product.price)}</span>
+              <span className="text-[var(--nm-muted)] line-through">{formatMoney(product.price)}</span>
             </>
           ) : (
-            <span className="font-semibold">{formatMoney(product.price)}</span>
+            <span className="font-semibold text-[var(--nm-ink)]">{formatMoney(product.price)}</span>
           )}
         </p>
+        {product.clickCollectEnabled !== false && (
+          <p className="mt-1 text-xs text-[var(--nm-muted)]">Click &amp; collect</p>
+        )}
       </div>
     </Link>
   );

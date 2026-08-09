@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 
 export function ProductGallery({ images, alt }: { images: string[]; alt: string }) {
-  const fallback = 'https://placehold.co/800x800/e8f2ec/1f6b4a?text=Neighbourhood';
+  const fallback = 'https://placehold.co/800x800/e7f4ef/0f7a63?text=Neighbourhood';
   const list = images.length > 0 ? images : [fallback];
   const [active, setActive] = useState(0);
   const [lightbox, setLightbox] = useState(false);
@@ -16,7 +16,7 @@ export function ProductGallery({ images, alt }: { images: string[]; alt: string 
     <div>
       <button
         type="button"
-        className="relative aspect-square w-full overflow-hidden rounded-3xl bg-[var(--nm-mist)]"
+        className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[var(--nm-soft)]"
         onClick={() => setLightbox(true)}
         aria-label="Open image lightbox"
       >
@@ -44,7 +44,7 @@ export function ProductGallery({ images, alt }: { images: string[]; alt: string 
               type="button"
               onClick={() => setActive(i)}
               className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 ${
-                i === active ? 'border-[var(--nm-forest)]' : 'border-transparent opacity-80'
+                i === active ? 'border-[var(--nm-accent)]' : 'border-transparent opacity-80'
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}

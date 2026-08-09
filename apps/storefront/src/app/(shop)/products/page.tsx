@@ -19,7 +19,11 @@ export default async function ProductsPage({
   }).catch(() => []);
   const resolved = branchId ?? branches[0]?.id;
   if (!resolved) {
-    return <div className="mx-auto max-w-6xl px-4 py-16">No branches available.</div>;
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-16 text-[var(--nm-muted)]">
+        No branches available.
+      </div>
+    );
   }
 
   const qs = new URLSearchParams({
@@ -45,14 +49,14 @@ export default async function ProductsPage({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="font-display text-4xl font-semibold text-[var(--nm-ink)]">Shop</h1>
-      <p className="mt-2 text-sm text-slate-600">{data.total} products at your branch</p>
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <h1 className="font-display text-4xl font-bold tracking-tight text-[var(--nm-ink)]">Shop</h1>
+      <p className="mt-2 text-sm text-[var(--nm-muted)]">{data.total} products at your branch</p>
+      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {data.items.map((p) => (
           <ProductCard key={p.slug} product={p} />
         ))}
         {data.items.length === 0 && (
-          <p className="col-span-full rounded-2xl border border-dashed px-4 py-12 text-center text-sm text-slate-500">
+          <p className="col-span-full border border-dashed border-[var(--nm-line)] px-4 py-12 text-center text-sm text-[var(--nm-muted)]">
             No products match this filter.
           </p>
         )}

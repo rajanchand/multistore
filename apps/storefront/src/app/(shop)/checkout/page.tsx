@@ -8,7 +8,7 @@ export default async function CheckoutPage() {
   if (!customer) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-10">
-        <h1 className="font-[Fraunces] text-4xl font-semibold">Checkout</h1>
+        <h1 className="font-display text-4xl font-bold tracking-tight text-[var(--nm-ink)]">Checkout</h1>
         <Card className="mt-8">
           <CardHeader>
             <CardTitle>Sign in required</CardTitle>
@@ -35,7 +35,7 @@ export default async function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="font-[Fraunces] text-4xl font-semibold">Checkout</h1>
+      <h1 className="font-display text-4xl font-bold tracking-tight text-[var(--nm-ink)]">Checkout</h1>
       <Card className="mt-8">
         <CardHeader>
           <CardTitle>Ready to pay</CardTitle>

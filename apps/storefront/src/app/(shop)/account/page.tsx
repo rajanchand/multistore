@@ -112,7 +112,7 @@ export default function AccountPage() {
   if (checking) {
     return (
       <div className="mx-auto max-w-md px-4 py-10">
-        <p className="text-sm text-slate-600">Checking your session…</p>
+        <p className="text-sm text-[var(--nm-muted)]">Checking your session…</p>
       </div>
     );
   }
@@ -120,7 +120,10 @@ export default function AccountPage() {
   if (customer) {
     return (
       <div className="mx-auto max-w-md px-4 py-10">
-        <Card>
+        <h1 className="font-display mb-6 text-3xl font-bold tracking-tight text-[var(--nm-ink)]">
+          Account
+        </h1>
+        <Card className="border-[var(--nm-line)] shadow-none">
           <CardHeader>
             <CardTitle>Welcome, {customer.firstName}</CardTitle>
             <CardDescription>Signed in as {customer.email}</CardDescription>
@@ -156,7 +159,10 @@ export default function AccountPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-10">
-      <Card>
+      <h1 className="font-display mb-6 text-3xl font-bold tracking-tight text-[var(--nm-ink)]">
+        Account
+      </h1>
+      <Card className="border-[var(--nm-line)] shadow-none">
         <CardHeader>
           <CardTitle>{mode === 'login' ? 'Sign in' : 'Create account'}</CardTitle>
           <CardDescription>
@@ -243,7 +249,7 @@ export default function AccountPage() {
                 New here?{' '}
                 <button
                   type="button"
-                  className="font-medium text-[var(--nm-forest)] underline-offset-2 hover:underline"
+                  className="font-medium text-[var(--nm-accent)] underline-offset-2 hover:underline"
                   onClick={() => {
                     setMode('register');
                     setError(null);
@@ -257,7 +263,7 @@ export default function AccountPage() {
                 Already have an account?{' '}
                 <button
                   type="button"
-                  className="font-medium text-[var(--nm-forest)] underline-offset-2 hover:underline"
+                  className="font-medium text-[var(--nm-accent)] underline-offset-2 hover:underline"
                   onClick={() => {
                     setMode('login');
                     setError(null);

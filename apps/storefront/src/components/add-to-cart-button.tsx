@@ -65,10 +65,15 @@ export function AddToCartButton({
 
   return (
     <div className="space-y-2">
-      <Button size="lg" onClick={add} disabled={disabled || loading}>
+      <Button
+        size="lg"
+        className="h-12 w-full rounded-xl sm:w-auto sm:min-w-[12rem]"
+        onClick={add}
+        disabled={disabled || loading}
+      >
         {loading ? 'Adding…' : 'Add to cart'}
       </Button>
-      {message && <p className="text-sm text-slate-600">{message}</p>}
+      {message && <p className="text-sm text-[var(--nm-muted)]">{message}</p>}
     </div>
   );
 }

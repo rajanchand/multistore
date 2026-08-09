@@ -3,6 +3,7 @@ import { SiteFooter } from '@/components/site-footer';
 import { CategoriesBar } from '@/components/categories-bar';
 import { PromoRibbon } from '@/components/promo-ribbon';
 import { ChatPlugins } from '@/components/chat-plugins';
+import { MobileNav } from '@/components/mobile-nav';
 import { getPublicSettings } from '@/lib/public-settings';
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
@@ -16,8 +17,9 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
       <PromoRibbon />
       <SiteHeader />
       <CategoriesBar />
-      <main>{children}</main>
+      <main className="nm-main">{children}</main>
       <SiteFooter />
+      <MobileNav />
       <ChatPlugins plugins={chatPlugins} />
     </>
   );

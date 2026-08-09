@@ -1,32 +1,77 @@
 @import '@repo/ui/globals.css';
 
 :root {
-  --nm-ink: #12231c;
-  --nm-forest: #1f6b4a;
-  --nm-leaf: #2f9e6b;
-  --nm-sand: #f3efe6;
-  --nm-mist: #e8f2ec;
-  --nm-amber: #c47b2b;
+  /* Fresh neighbourhood retail — light mint canvas, teal accent (not purple / cream-farmhouse) */
+  --nm-ink: #13241f;
+  --nm-muted: #5a6d66;
+  --nm-line: #d7e3de;
+  --nm-soft: #e7f4ef;
+  --nm-canvas: #f6faf8;
+  --nm-surface: #ffffff;
+  --nm-accent: #0f7a63;
+  --nm-accent-hover: #0c6552;
+  --nm-accent-soft: #cfeee4;
+  --nm-highlight: #f0b429;
+
+  /* Align shared @repo/ui tokens with storefront (avoid default purple) */
+  --background: 150 25% 98%;
+  --foreground: 160 30% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 160 30% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 160 30% 11%;
+  --primary: 166 78% 27%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 150 20% 94%;
+  --secondary-foreground: 160 25% 18%;
+  --muted: 150 18% 94%;
+  --muted-foreground: 160 12% 40%;
+  --accent: 160 40% 94%;
+  --accent-foreground: 166 70% 22%;
+  --border: 160 16% 86%;
+  --input: 160 16% 86%;
+  --ring: 166 78% 27%;
+  --radius: 0.75rem;
+
+  /* Legacy aliases used in a few pages */
+  --nm-forest: var(--nm-accent);
+  --nm-leaf: #1a9a7c;
+  --nm-mist: var(--nm-soft);
+  --nm-sand: var(--nm-canvas);
+  --nm-amber: var(--nm-highlight);
 }
 
 body {
-  font-family: var(--font-dm-sans), 'DM Sans', 'Segoe UI', sans-serif;
+  font-family: var(--font-jakarta), 'Plus Jakarta Sans', sans-serif;
   color: var(--nm-ink);
-  background:
-    radial-gradient(1200px 500px at 10% -10%, rgba(47, 158, 107, 0.14), transparent 55%),
-    radial-gradient(900px 420px at 90% 0%, rgba(196, 123, 43, 0.1), transparent 50%),
-    linear-gradient(180deg, #f7faf8 0%, #eef5f1 40%, #f8f6f1 100%);
+  background-color: var(--nm-canvas);
+  background-image:
+    radial-gradient(ellipse 900px 420px at 8% -8%, rgba(15, 122, 99, 0.12), transparent 55%),
+    radial-gradient(ellipse 700px 360px at 96% 4%, rgba(240, 180, 41, 0.08), transparent 50%),
+    linear-gradient(180deg, #fbfdfc 0%, var(--nm-canvas) 42%, #f3f8f5 100%);
   background-attachment: fixed;
 }
 
+body::before {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.35;
+  background-image: radial-gradient(rgba(19, 36, 31, 0.045) 0.7px, transparent 0.7px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(180deg, black 0%, transparent 78%);
+}
+
 .font-display {
-  font-family: var(--font-fraunces), Fraunces, Georgia, serif;
+  font-family: var(--font-bricolage), 'Bricolage Grotesque', sans-serif;
 }
 
 @keyframes nm-fade-up {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -34,13 +79,23 @@ body {
   }
 }
 
-@keyframes nm-soft-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
+@keyframes nm-ken-soft {
+  from {
+    transform: scale(1.04);
   }
-  50% {
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes nm-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -49,7 +104,15 @@ body {
 }
 
 .nm-animate-in-delay {
-  animation: nm-fade-up 0.65s ease-out 0.12s both;
+  animation: nm-fade-up 0.65s ease-out 0.14s both;
+}
+
+.nm-hero-media {
+  animation: nm-ken-soft 8s ease-out both;
+}
+
+.nm-hero-copy {
+  animation: nm-rise 0.7s ease-out 0.08s both;
 }
 
 .nm-scrollbar-none {
@@ -57,4 +120,24 @@ body {
 }
 .nm-scrollbar-none::-webkit-scrollbar {
   display: none;
+}
+
+/* Mobile bottom nav clearance */
+.nm-main {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .nm-main {
+    padding-bottom: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nm-animate-in,
+  .nm-animate-in-delay,
+  .nm-hero-media,
+  .nm-hero-copy {
+    animation: none !important;
+  }
 }

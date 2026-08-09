@@ -84,42 +84,48 @@ export default async function HomePage() {
     <div>
       <HeroCarousel slides={slides} />
 
-      <section className="mx-auto max-w-6xl px-4 py-12 nm-animate-in">
+      <section className="mx-auto max-w-6xl px-4 py-14 nm-animate-in">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--nm-forest)]">
-              Browse
-            </p>
-            <h2 className="font-display mt-1 text-3xl font-semibold text-[var(--nm-ink)]">
+            <h2 className="font-display text-3xl font-bold tracking-tight text-[var(--nm-ink)] sm:text-4xl">
               Popular categories
             </h2>
+            <p className="mt-2 text-sm text-[var(--nm-muted)]">Jump straight to what you need.</p>
           </div>
           <Link
             href="/products"
-            className="hidden items-center gap-1 text-sm font-semibold text-[var(--nm-forest)] sm:inline-flex"
+            className="hidden items-center gap-1 text-sm font-semibold text-[var(--nm-accent)] sm:inline-flex"
           >
             Shop all <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-          {(home?.categories ?? []).slice(0, 8).map((c, i) => (
+        <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 border-t border-[var(--nm-line)] pt-6">
+          {(home?.categories ?? []).slice(0, 8).map((c) => (
             <Link
               key={c.id}
               href={`/categories/${c.slug}`}
-              className="rounded-2xl border border-emerald-900/10 bg-white/80 px-4 py-5 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--nm-leaf)]/40 hover:shadow-md"
-              style={{ animationDelay: `${i * 40}ms` }}
+              className="text-base font-semibold text-[var(--nm-ink)] underline-offset-4 transition hover:text-[var(--nm-accent)] hover:underline"
             >
               {c.name}
             </Link>
           ))}
+          {(home?.categories ?? []).length === 0 && (
+            <p className="text-sm text-[var(--nm-muted)]">Categories will appear once a branch is selected.</p>
+          )}
         </div>
       </section>
 
       <ProductRail title="New arrivals" products={home?.newArrivals ?? []} />
       <ProductRail title="Best sellers" products={home?.bestSellers ?? []} />
 
-      <section className="mx-auto max-w-6xl px-4 py-14 nm-animate-in-delay">
-        <div className="grid gap-4 md:grid-cols-3">
+      <section className="mx-auto max-w-6xl px-4 py-16 nm-animate-in-delay">
+        <h2 className="font-display text-3xl font-bold tracking-tight text-[var(--nm-ink)]">
+          Why shop with us
+        </h2>
+        <p className="mt-2 max-w-xl text-sm text-[var(--nm-muted)]">
+          Local stock, clear pricing, and a checkout you can trust.
+        </p>
+        <div className="mt-10 grid gap-10 md:grid-cols-3">
           {[
             {
               icon: MapPin,
@@ -137,15 +143,10 @@ export default async function HomePage() {
               body: 'Payments confirmed server-side. No browser-trusted prices at checkout.',
             },
           ].map(({ icon: Icon, title, body }) => (
-            <div
-              key={title}
-              className="rounded-3xl border border-emerald-900/10 bg-gradient-to-br from-white to-[var(--nm-mist)] p-6"
-            >
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--nm-forest)] text-white">
-                <Icon className="h-5 w-5" />
-              </div>
-              <h3 className="mt-4 font-display text-xl font-semibold">{title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{body}</p>
+            <div key={title}>
+              <Icon className="h-6 w-6 text-[var(--nm-accent)]" aria-hidden />
+              <h3 className="mt-4 font-display text-xl font-bold text-[var(--nm-ink)]">{title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--nm-muted)]">{body}</p>
             </div>
           ))}
         </div>
@@ -169,21 +170,21 @@ function ProductRail({
 }) {
   return (
     <section className="mx-auto max-w-6xl px-4 py-10">
-      <div className="flex items-end justify-between">
-        <h2 className="font-display text-3xl font-semibold text-[var(--nm-ink)]">{title}</h2>
+      <div className="flex items-end justify-between gap-4">
+        <h2 className="font-display text-3xl font-bold tracking-tight text-[var(--nm-ink)]">{title}</h2>
         <Link
           href="/products"
-          className="text-sm font-semibold text-[var(--nm-forest)] hover:underline"
+          className="text-sm font-semibold text-[var(--nm-accent)] hover:underline"
         >
           View all
         </Link>
       </div>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {products.map((p) => (
           <ProductCard key={p.slug} product={p} />
         ))}
         {products.length === 0 && (
-          <p className="col-span-full rounded-2xl border border-dashed border-emerald-900/20 bg-white/50 px-4 py-10 text-center text-sm text-slate-500">
+          <p className="col-span-full border border-dashed border-[var(--nm-line)] px-4 py-12 text-center text-sm text-[var(--nm-muted)]">
             No products yet — run seed data and select a branch.
           </p>
         )}
