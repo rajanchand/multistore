@@ -5,11 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@repo/ui';
 import { API_URL } from '@/lib/api';
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 export function BannerActions({ id, status }: { id: string; status: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -18,12 +13,6 @@ export function BannerActions({ id, status }: { id: string; status: string }) {
   async function setStatus(next: 'DRAFT' | 'ACTIVE' | 'ARCHIVED') {
     setBusy(true);
     setError(null);
-    const token = readCookie('admin_session');
-    if (!token) {
-      setError('Session expired');
-      setBusy(false);
-      return;
-    }
     try {
       const path =
         next === 'ARCHIVED'
@@ -34,7 +23,6 @@ export function BannerActions({ id, status }: { id: string; status: string }) {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: next === 'ARCHIVED' ? undefined : JSON.stringify({ status: next }),
       });

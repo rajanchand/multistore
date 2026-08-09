@@ -47,30 +47,34 @@ export class SearchController {
         };
 
     const [products, orders, customers, branches] = await Promise.all([
-      this.prisma.product.findMany({
-        where: {
-          deletedAt: null,
-          ...productBranchScope,
-          OR: [
-            { name: { contains: q, mode: 'insensitive' } },
-            { sku: { contains: q, mode: 'insensitive' } },
-            { barcode: { contains: q, mode: 'insensitive' } },
-          ],
-        },
-        select: { id: true, name: true, sku: true, status: true },
-        take: query.limit,
-      }),
-      this.prisma.order.findMany({
-        where: {
-          ...orderBranchFilter,
-          OR: [
-            { orderNumber: { contains: q, mode: 'insensitive' } },
-            { contactEmail: { contains: q, mode: 'insensitive' } },
-          ],
-        },
-        select: { id: true, orderNumber: true, status: true, total: true },
-        take: query.limit,
-      }),
+      user.permissions.has('product.read')
+        ? this.prisma.product.findMany({
+            where: {
+              deletedAt: null,
+              ...productBranchScope,
+              OR: [
+                { name: { contains: q, mode: 'insensitive' } },
+                { sku: { contains: q, mode: 'insensitive' } },
+                { barcode: { contains: q, mode: 'insensitive' } },
+              ],
+            },
+            select: { id: true, name: true, sku: true, status: true },
+            take: query.limit,
+          })
+        : Promise.resolve([]),
+      user.permissions.has('order.read')
+        ? this.prisma.order.findMany({
+            where: {
+              ...orderBranchFilter,
+              OR: [
+                { orderNumber: { contains: q, mode: 'insensitive' } },
+                { contactEmail: { contains: q, mode: 'insensitive' } },
+              ],
+            },
+            select: { id: true, orderNumber: true, status: true, total: true },
+            take: query.limit,
+          })
+        : Promise.resolve([]),
       user.permissions.has('customer.read')
         ? this.prisma.customer.findMany({
             where: {
@@ -86,19 +90,21 @@ export class SearchController {
             take: query.limit,
           })
         : Promise.resolve([]),
-      this.prisma.branch.findMany({
-        where: {
-          deletedAt: null,
-          ...branchFilter,
-          OR: [
-            { name: { contains: q, mode: 'insensitive' } },
-            { code: { contains: q, mode: 'insensitive' } },
-            { city: { contains: q, mode: 'insensitive' } },
-          ],
-        },
-        select: { id: true, name: true, code: true, city: true },
-        take: query.limit,
-      }),
+      user.permissions.has('branch.read')
+        ? this.prisma.branch.findMany({
+            where: {
+              deletedAt: null,
+              ...branchFilter,
+              OR: [
+                { name: { contains: q, mode: 'insensitive' } },
+                { code: { contains: q, mode: 'insensitive' } },
+                { city: { contains: q, mode: 'insensitive' } },
+              ],
+            },
+            select: { id: true, name: true, code: true, city: true },
+            take: query.limit,
+          })
+        : Promise.resolve([]),
     ]);
 
     return {

@@ -7,8 +7,8 @@ import { API_URL } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('rajan.chand');
-  const [password, setPassword] = useState('Rajan33555@');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [mfaCode, setMfaCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [needsMfa, setNeedsMfa] = useState(false);
@@ -35,8 +35,18 @@ export default function LoginPage() {
         }
         return;
       }
-      // Persist token for server components that forward Authorization.
-      document.cookie = `admin_session=${body.token}; path=/; SameSite=Lax`;
+      // Mirror session onto the admin origin as httpOnly (never document.cookie).
+      if (body?.token) {
+        const sessionRes = await fetch('/api/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: body.token }),
+        });
+        if (!sessionRes.ok) {
+          setError('Signed in, but failed to establish a local session cookie.');
+          return;
+        }
+      }
       router.replace('/dashboard');
       router.refresh();
     } catch {
@@ -106,9 +116,6 @@ export default function LoginPage() {
               {loading ? 'Signing in…' : 'Sign in'}
             </Button>
           </form>
-          <p className="mt-4 text-xs text-muted-foreground">
-            Super Admin: rajan.chand · other seed accounts use DevPassword123!
-          </p>
         </CardContent>
       </Card>
     </div>

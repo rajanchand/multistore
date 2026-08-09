@@ -28,9 +28,9 @@ pnpm dev               # or: pnpm dev:api / dev:admin / dev:storefront
 
 ### Seed credentials (dev only)
 
-Most seed passwords: `DevPassword123!`
+Most seed passwords: `DevPassword123!` (override Super Admin with `SEED_SUPERADMIN_*` env vars)
 
-- Super Admin: username `rajan.chand` / `Rajan33555@`
+- Super Admin: username `rajan.chand` (default)
 - Glasgow Manager: `manager.glasgow@dev.local`
 - Customer: `alice@example.dev`
 
@@ -172,7 +172,7 @@ Create product now accepts original price (pence), optional sale price + % disco
 | SMS | `/sms` | `GET /sms`, `POST /sms/send` | `sms.send` |
 | Stock transfers | `/inventory/transfers`, `/new` | `/inventory/transfers` | `inventory.transfer` |
 
-**How to use:** log in as `rajan.chand` / `Rajan33555@`. Sidebar shows permission-gated items. SMS defaults to `LogSmsProvider` (API console); set `SMS_PROVIDER=twilio` + `TWILIO_*` for live send. Seed includes demo FAQs, about sections, payment methods, and campaign `spring-energy-push`.
+**How to use:** log in as Super Admin (see `packages/database/src/seed/dev-credentials.md`). Sidebar shows permission-gated items. SMS defaults to `LogSmsProvider` (API console); set `SMS_PROVIDER=twilio` + `TWILIO_*` for live send. Seed includes demo FAQs, about sections, payment methods, and campaign `spring-energy-push`.
 
 ## Fixes (2026-08-09) — Branches & menu 404s
 

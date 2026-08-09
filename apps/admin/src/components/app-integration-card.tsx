@@ -5,11 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input } from '@repo/ui';
 import { API_URL } from '@/lib/api';
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 type Plugin = {
   id: string;
   code: string;
@@ -63,12 +58,6 @@ export function AppIntegrationCard({ plugin }: { plugin: Plugin }) {
     setBusy(true);
     setError(null);
     setMessage(null);
-    const token = readCookie('admin_session');
-    if (!token) {
-      setError('Session expired');
-      setBusy(false);
-      return;
-    }
 
     const nextConfig: Record<string, unknown> = { ...config };
     for (const [key, value] of Object.entries(fields)) {
@@ -81,7 +70,6 @@ export function AppIntegrationCard({ plugin }: { plugin: Plugin }) {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           isEnabled: nextEnabled ?? enabled,

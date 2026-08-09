@@ -21,7 +21,6 @@ export default async function CheckoutPage() {
               Checkout creates a server-side order, reserves stock atomically, and opens a Stripe
               PaymentIntent. Sign in as a customer before payment.
             </p>
-            <p>Dev customer: alice@example.dev / DevPassword123!</p>
             <div className="flex gap-3">
               <Button asChild className="rounded-xl">
                 <Link href="/account">Sign in</Link>

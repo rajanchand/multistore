@@ -16,19 +16,12 @@ type TerminalSession = {
   failureReason?: string;
 };
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 async function posFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = readCookie('admin_session');
   const res = await fetch(`${API_URL}/api/v1${path}`, {
     ...init,
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}`, Cookie: `admin_session=${token}` } : {}),
       ...init?.headers,
     },
   });

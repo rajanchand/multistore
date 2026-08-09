@@ -5,11 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Button, Input } from '@repo/ui';
 import { API_URL } from '@/lib/api';
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 export type TransferBranchOption = { id: string; name: string; code: string };
 
 export type TransferProductOption = {
@@ -65,13 +60,12 @@ export function TransferCreateForm({
     setSaving(true);
     setError(null);
     try {
-      const token = readCookie('admin_session');
       const res = await fetch(`${API_URL}/api/v1/inventory/transfers`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          
         },
         body: JSON.stringify({
           fromBranchId,

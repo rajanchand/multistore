@@ -5,25 +5,17 @@ import { useRouter } from 'next/navigation';
 import { Button, Input } from '@repo/ui';
 import { API_URL } from '@/lib/api';
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 async function apiAction(
   path: string,
   method: string,
   body?: Record<string, unknown>,
 ): Promise<{ ok: boolean; message?: string }> {
-  const token = readCookie('admin_session');
-  if (!token) return { ok: false, message: 'Session expired' };
   try {
     const res = await fetch(`${API_URL}/api/v1${path}`, {
       method,
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
       },
       body: body ? JSON.stringify(body) : undefined,
     });

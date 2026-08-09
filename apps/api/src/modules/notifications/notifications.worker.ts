@@ -90,6 +90,10 @@ export class NotificationsWorker implements OnModuleInit, OnModuleDestroy {
         sentAt: new Date(),
       },
     });
-    this.logger.log(`[email:dev] ${order.customer.email} <- ${copy.title} (${order.orderNumber})`);
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger.log(`[email:dev] ${order.customer.email} <- ${copy.title} (${order.orderNumber})`);
+    } else {
+      this.logger.log(`[email] order=${order.orderNumber} type=${type}`);
+    }
   }
 }

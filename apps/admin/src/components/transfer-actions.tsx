@@ -6,11 +6,6 @@ import { STOCK_TRANSFER_TRANSITIONS, type StockTransferStatus } from '@repo/type
 import { Button } from '@repo/ui';
 import { API_URL } from '@/lib/api';
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 const LABELS: Record<string, string> = {
   APPROVED: 'Approve',
   PREPARING: 'Mark preparing',
@@ -38,13 +33,12 @@ export function TransferActions({
     setBusy(to);
     setError(null);
     try {
-      const token = readCookie('admin_session');
       const res = await fetch(`${API_URL}/api/v1/inventory/transfers/${transferId}/transition`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          
         },
         body: JSON.stringify({ status: to }),
       });

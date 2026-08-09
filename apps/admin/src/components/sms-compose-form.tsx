@@ -5,11 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Button, Card, CardContent, Input } from '@repo/ui';
 import { API_URL } from '@/lib/api';
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 type Branch = { id: string; name: string; code: string };
 type Campaign = {
   id: string;
@@ -71,12 +66,9 @@ export function SmsComposeForm({
     }
   }, [campaignId, campaigns, branches]);
 
-  async function authHeaders(): Promise<Record<string, string> | null> {
-    const token = readCookie('admin_session');
-    if (!token) return null;
+  function authHeaders(): Record<string, string> {
     return {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
     };
   }
 
@@ -84,12 +76,7 @@ export function SmsComposeForm({
     setGenerating(true);
     setError(null);
     setGenMeta(null);
-    const headers = await authHeaders();
-    if (!headers) {
-      setError('Session expired');
-      setGenerating(false);
-      return;
-    }
+    const headers = authHeaders();
 
     try {
       const res = await fetch(`${API_URL}/api/v1/sms/generate`, {
@@ -131,13 +118,7 @@ export function SmsComposeForm({
     setLoading(true);
     setError(null);
     setResult(null);
-    const headers = await authHeaders();
-    if (!headers) {
-      setError('Session expired');
-      setLoading(false);
-      return;
-    }
-
+    const headers = authHeaders();
     const payload =
       mode === 'single'
         ? {

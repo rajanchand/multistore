@@ -17,9 +17,9 @@ import { BRANCHES, CATEGORIES, PRODUCTS, CUSTOMERS } from './data';
 const prisma = new PrismaClient();
 
 const DEV_PASSWORD = 'DevPassword123!';
-/** Super Admin seed credentials (username login supported). */
-const SUPERADMIN_USERNAME = 'rajan.chand';
-const SUPERADMIN_PASSWORD = 'Rajan33555@';
+/** Super Admin seed credentials (username login supported). Override via env for local-only use. */
+const SUPERADMIN_USERNAME = process.env.SEED_SUPERADMIN_USERNAME ?? 'rajan.chand';
+const SUPERADMIN_PASSWORD = process.env.SEED_SUPERADMIN_PASSWORD ?? DEV_PASSWORD;
 
 async function hash(password: string): Promise<string> {
   return argon2.hash(password, { type: argon2.argon2id, memoryCost: 19456, timeCost: 2 });

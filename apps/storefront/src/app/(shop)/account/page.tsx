@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@repo/ui';
 import { API_URL } from '@/lib/api';
 
-const CUSTOMER_SESSION_MAX_AGE_SEC = 30 * 24 * 60 * 60; // match API CUSTOMER session TTL
-
 type Customer = {
   id: string;
   email: string;
@@ -16,14 +14,10 @@ type Customer = {
 
 type Mode = 'login' | 'register';
 
-function persistSession(token: string) {
-  document.cookie = `customer_session=${encodeURIComponent(token)}; path=/; Max-Age=${CUSTOMER_SESSION_MAX_AGE_SEC}; SameSite=Lax`;
-}
-
 export default function AccountPage() {
   const [mode, setMode] = useState<Mode>('login');
-  const [email, setEmail] = useState('alice@example.dev');
-  const [password, setPassword] = useState('DevPassword123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -37,11 +31,6 @@ export default function AccountPage() {
       try {
         const res = await fetch(`${API_URL}/api/v1/customer-auth/me`, {
           credentials: 'include',
-          headers: (() => {
-            const match = document.cookie.match(/(?:^|; )customer_session=([^;]*)/);
-            const token = match?.[1] ? decodeURIComponent(match[1]) : null;
-            return token ? { Authorization: `Bearer ${token}` } : undefined;
-          })(),
         });
         if (!res.ok) return;
         const body = (await res.json()) as Customer;
@@ -81,11 +70,21 @@ export default function AccountPage() {
         setError(body?.error?.message ?? (mode === 'login' ? 'Sign in failed' : 'Registration failed'));
         return;
       }
-      if (!body?.token || !body?.customer) {
+      if (!body?.customer) {
         setError('Unexpected response from the API.');
         return;
       }
-      persistSession(body.token);
+      if (body?.token) {
+        const sessionRes = await fetch('/api/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: body.token }),
+        });
+        if (!sessionRes.ok) {
+          setError('Signed in, but failed to establish a local session cookie.');
+          return;
+        }
+      }
       setCustomer(body.customer);
     } catch {
       setError('Unable to reach the API. Is it running on :4000?');
@@ -99,7 +98,6 @@ export default function AccountPage() {
     setError(null);
     try {
       await fetch('/api/logout', { method: 'POST' });
-      document.cookie = 'customer_session=; path=/; Max-Age=0; SameSite=Lax';
       setCustomer(null);
       setMode('login');
     } catch {
@@ -274,11 +272,6 @@ export default function AccountPage() {
               </>
             )}
           </p>
-          {mode === 'login' && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Dev: alice@example.dev / DevPassword123!
-            </p>
-          )}
         </CardContent>
       </Card>
     </div>

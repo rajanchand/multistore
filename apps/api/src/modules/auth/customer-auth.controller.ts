@@ -38,7 +38,8 @@ export class CustomerAuthController {
 
   @Post('register')
   @UseGuards(ThrottlerGuard)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  // Abuse control: mass signup / credential stuffing against register.
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   async register(
     @Body(new ZodValidationPipe(registerSchema)) body: RegisterInput,
     @Req() req: Request,

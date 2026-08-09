@@ -2,11 +2,20 @@
 
 Password for most seed accounts: `DevPassword123!`
 
+Super Admin password defaults to the same unless you set:
+
+```bash
+SEED_SUPERADMIN_USERNAME=rajan.chand
+SEED_SUPERADMIN_PASSWORD='your-local-only-password'
+```
+
+Do **not** commit production passwords. On the VPS, change the Super Admin password via the admin UI or a one-off DB update — do not rely on seed defaults for live access.
+
 ## Staff
 
 | Role | Login | Password |
 | --- | --- | --- |
-| Super Admin | username `rajan.chand` (or email `superadmin@dev.local`) | `Rajan33555@` |
+| Super Admin | username from `SEED_SUPERADMIN_USERNAME` (default `rajan.chand`) or email `superadmin@dev.local` | `SEED_SUPERADMIN_PASSWORD` or `DevPassword123!` |
 | Admin | `admin@dev.local` | `DevPassword123!` |
 | Glasgow Manager | `manager.glasgow@dev.local` | `DevPassword123!` |
 | Edinburgh Manager | `manager.edinburgh@dev.local` | `DevPassword123!` |

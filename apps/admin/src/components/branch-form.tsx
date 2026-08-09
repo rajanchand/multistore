@@ -5,11 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Button, Card, CardContent, Input } from '@repo/ui';
 import { API_URL } from '@/lib/api';
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 function slugify(value: string): string {
   return value
     .toLowerCase()
@@ -88,12 +83,6 @@ export function BranchForm({
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const token = readCookie('admin_session');
-    if (!token) {
-      setError('Session expired. Please sign in again.');
-      setLoading(false);
-      return;
-    }
 
     const payload = {
       name: form.name,
@@ -126,7 +115,6 @@ export function BranchForm({
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(payload),
         },

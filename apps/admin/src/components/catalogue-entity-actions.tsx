@@ -5,11 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@repo/ui';
 import { API_URL } from '@/lib/api';
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 export function CatalogueEntityActions({
   kind,
   id,
@@ -27,17 +22,10 @@ export function CatalogueEntityActions({
     if (confirmMsg && !window.confirm(confirmMsg)) return;
     setBusy(true);
     setError(null);
-    const token = readCookie('admin_session');
-    if (!token) {
-      setError('Session expired');
-      setBusy(false);
-      return;
-    }
     try {
       const res = await fetch(`${API_URL}/api/v1/${kind}/${id}/${path}`, {
         method: 'POST',
         credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) {

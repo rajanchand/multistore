@@ -222,6 +222,16 @@ export class PosService {
     input: PosTerminalActionInput,
     ctx: RequestContext,
   ) {
+    // Mock terminal marks card payments SUCCEEDED without a processor — never in production
+    // unless explicitly enabled for a controlled lab environment.
+    const mockAllowed =
+      process.env.NODE_ENV !== 'production' || process.env.ALLOW_MOCK_POS_TERMINAL === '1';
+    if (!mockAllowed) {
+      throw Errors.forbidden(
+        'Mock POS card approval is disabled in production. Integrate a real card terminal.',
+      );
+    }
+
     const session = await this.readSession(sessionId);
     if (!session) throw Errors.notFound('Terminal session');
     this.branchAccess.assertCanAccess(user, session.branchId);

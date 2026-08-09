@@ -73,11 +73,7 @@ function readCookie(name: string): string | null {
 }
 
 function authHeaders(): HeadersInit {
-  const token = readCookie('customer_session');
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+  return { 'Content-Type': 'application/json' };
 }
 
 async function readApiError(res: Response): Promise<string> {

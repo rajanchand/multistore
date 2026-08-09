@@ -5,11 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Button, Input } from '@repo/ui';
 import { API_URL } from '@/lib/api';
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 export type SettingsField =
   | { key: string; label: string; type?: 'text' | 'email' | 'url' | 'textarea'; placeholder?: string }
   | { key: string; label: string; type: 'money'; hint?: string }
@@ -49,12 +44,6 @@ export function SettingsJsonForm({
     setLoading(true);
     setError(null);
     setSaved(false);
-    const token = readCookie('admin_session');
-    if (!token) {
-      setError('Session expired');
-      setLoading(false);
-      return;
-    }
 
     const body: Record<string, unknown> = { ...initial };
     for (const field of fields) {
@@ -74,7 +63,6 @@ export function SettingsJsonForm({
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(body),
       });

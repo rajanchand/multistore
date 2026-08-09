@@ -32,11 +32,11 @@ Health check: [http://localhost:4000/api/v1/health](http://localhost:4000/api/v1
 
 ## Development accounts
 
-Most seeded passwords: `DevPassword123!` (development only). Super Admin uses username `rajan.chand` / `Rajan33555@`.
+Most seeded passwords: `DevPassword123!` (development only). Override Super Admin via `SEED_SUPERADMIN_USERNAME` / `SEED_SUPERADMIN_PASSWORD`.
 
 | Account | Login |
 | --- | --- |
-| Super Admin | `rajan.chand` |
+| Super Admin | `rajan.chand` (default username) |
 | Glasgow Manager | `manager.glasgow@dev.local` |
 | Edinburgh Manager | `manager.edinburgh@dev.local` |
 | Customer | `alice@example.dev` |

@@ -13,6 +13,11 @@ export class LogSmsProvider implements SmsProvider {
   readonly name = 'log';
 
   async send(toPhone: string, body: string): Promise<SmsSendResult> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'SMS log provider cannot send in production. Configure SMS_PROVIDER=twilio with TWILIO_* credentials.',
+      );
+    }
     const id = `log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     // eslint-disable-next-line no-console
     console.info(`[SMS:log] to=${toPhone} id=${id} body=${body.slice(0, 120)}`);
@@ -66,6 +71,9 @@ export function createSmsProviderFromEnv(env: NodeJS.ProcessEnv = process.env): 
     if (sid && token && from) {
       return new TwilioSmsProvider(sid, token, from);
     }
+    throw new Error(
+      'SMS_PROVIDER=twilio requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER.',
+    );
   }
   return new LogSmsProvider();
 }

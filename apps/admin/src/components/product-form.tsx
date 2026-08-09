@@ -7,11 +7,6 @@ import { Button, Card, CardContent, Input } from '@repo/ui';
 import { API_URL } from '@/lib/api';
 import { ProductImageEditor } from '@/components/product-image-editor';
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 function slugify(value: string): string {
   return value
     .toLowerCase()
@@ -135,12 +130,6 @@ export function ProductForm({
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const token = readCookie('admin_session');
-    if (!token) {
-      setError('Session expired. Please sign in again.');
-      setLoading(false);
-      return;
-    }
 
     const barcodeValue = barcode.trim() === '' ? null : barcode.trim();
 
@@ -222,7 +211,6 @@ export function ProductForm({
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(payload),
         },

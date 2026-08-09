@@ -9,8 +9,13 @@ out/
 build/
 .turbo/
 
-# Environment — never commit secrets
+# Environment — never commit secrets (any package path)
 .env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
 .env.local
 .env.*.local
 .env.development

@@ -5,11 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Button, Input } from '@repo/ui';
 import { API_URL } from '@/lib/api';
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 export function AboutForm({
   initial,
 }: {
@@ -27,19 +22,12 @@ export function AboutForm({
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const token = readCookie('admin_session');
-    if (!token) {
-      setError('Session expired');
-      setLoading(false);
-      return;
-    }
     try {
       const res = await fetch(`${API_URL}/api/v1/about`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           sectionKey,

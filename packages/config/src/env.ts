@@ -42,7 +42,17 @@ export function loadServerEnv(source: NodeJS.ProcessEnv = process.env): ServerEn
       `Environment validation failed. Fix the following variables (see .env.example):\n${problems}`,
     );
   }
-  cached = result.data;
+  const data = result.data;
+  // Production: if Stripe secret is configured, webhook verification must be too.
+  if (data.NODE_ENV === 'production' && data.STRIPE_SECRET_KEY?.trim()) {
+    if (!data.STRIPE_WEBHOOK_SECRET?.trim()) {
+      throw new Error(
+        'Environment validation failed. Fix the following variables (see .env.example):\n' +
+          '  - STRIPE_WEBHOOK_SECRET: required in production when STRIPE_SECRET_KEY is set',
+      );
+    }
+  }
+  cached = data;
   return cached;
 }
 

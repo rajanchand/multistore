@@ -93,13 +93,21 @@ export class SmsService implements OnModuleInit, OnModuleDestroy {
       input.campaignId
         ? this.prisma.campaign.findFirst({
             where: { id: input.campaignId, deletedAt: null },
-            select: { id: true, name: true, description: true, content: true, audience: true },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              content: true,
+              audience: true,
+              branches: { select: { branchId: true } },
+            },
           })
         : Promise.resolve(null),
       input.promotionId
         ? this.prisma.promotion.findFirst({
             where: { id: input.promotionId, deletedAt: null },
             include: {
+              branches: { select: { branchId: true } },
               coupons: {
                 where: { isActive: true },
                 orderBy: { createdAt: 'asc' },
@@ -113,6 +121,20 @@ export class SmsService implements OnModuleInit, OnModuleDestroy {
     if (input.campaignId && !campaign) throw Errors.notFound('Campaign');
     if (input.promotionId && !promotion) throw Errors.notFound('Promotion');
     if (input.branchId && !branch) throw Errors.notFound('Branch');
+
+    // Branch staff must not pull HQ / other-branch coupon codes via SMS compose.
+    if (campaign) {
+      this.branchAccess.assertCanManageBranchScoped(user, {
+        allBranches: campaign.branches.length === 0,
+        branches: campaign.branches,
+      });
+    }
+    if (promotion) {
+      this.branchAccess.assertCanManageBranchScoped(user, {
+        allBranches: promotion.allBranches,
+        branches: promotion.branches,
+      });
+    }
 
     const storeValue = (storeSetting?.value ?? {}) as Record<string, unknown>;
     const storeName =

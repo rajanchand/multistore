@@ -14,7 +14,7 @@ pnpm dev   # API :4000 · storefront :3000 · admin :3001
 Health: `http://localhost:4000/api/v1/health`  
 API docs: `http://localhost:4000/docs`
 
-Seed passwords (dev only): Super Admin `rajan.chand` / `Rajan33555@`; others `DevPassword123!` — see `packages/database/src/seed/dev-credentials.md`.
+Seed passwords (dev only): default `DevPassword123!`; Super Admin override via `SEED_SUPERADMIN_*` — see `packages/database/src/seed/dev-credentials.md`.
 
 ### Stripe checkout (optional)
 

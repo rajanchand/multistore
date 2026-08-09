@@ -21,7 +21,9 @@ export async function POST(req: NextRequest) {
   res.cookies.set('customer_session', '', {
     path: '/',
     maxAge: 0,
-    httpOnly: false,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
   });
   return res;
 }

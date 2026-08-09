@@ -5,11 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@repo/ui';
 import { API_URL } from '@/lib/api';
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 export function BranchActions({ id, isActive }: { id: string; isActive: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -18,17 +13,10 @@ export function BranchActions({ id, isActive }: { id: string; isActive: boolean 
   async function run(action: 'enable' | 'disable' | 'archive') {
     setBusy(action);
     setError(null);
-    const token = readCookie('admin_session');
-    if (!token) {
-      setError('Session expired');
-      setBusy(null);
-      return;
-    }
     try {
       const res = await fetch(`${API_URL}/api/v1/branches/${id}/${action}`, {
         method: 'POST',
         credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) {

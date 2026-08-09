@@ -25,8 +25,23 @@ async function bootstrap(): Promise<void> {
     logger: ['log', 'warn', 'error'],
   });
 
+  // Behind Traefik/Caddy/nginx, use X-Forwarded-For for throttling and audit IPs.
+  if (env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+  }
+
   app.setGlobalPrefix('api/v1');
-  app.use(helmet());
+  app.use(
+    helmet({
+      // Production: enable HSTS. CSP for HTML is primarily enforced by Next apps.
+      hsts:
+        env.NODE_ENV === 'production'
+          ? { maxAge: 31536000, includeSubDomains: true, preload: false }
+          : false,
+      contentSecurityPolicy: env.NODE_ENV === 'production' ? undefined : false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
   app.use(cookieParser());
   // Allow both localhost and 127.0.0.1 — browsers treat them as different origins.
   const corsOrigins = new Set<string>([env.APP_URL, env.ADMIN_URL]);
