@@ -17,6 +17,9 @@ import { BRANCHES, CATEGORIES, PRODUCTS, CUSTOMERS } from './data';
 const prisma = new PrismaClient();
 
 const DEV_PASSWORD = 'DevPassword123!';
+/** Super Admin seed credentials (username login supported). */
+const SUPERADMIN_USERNAME = 'rajan.chand';
+const SUPERADMIN_PASSWORD = 'Rajan33555@';
 
 async function hash(password: string): Promise<string> {
   return argon2.hash(password, { type: argon2.argon2id, memoryCost: 19456, timeCost: 2 });
@@ -80,7 +83,7 @@ interface DevAccount {
 }
 
 const DEV_ACCOUNTS: DevAccount[] = [
-  { email: 'superadmin@dev.local', username: 'superadmin', firstName: 'Sam', lastName: 'Admin', role: 'SUPER_ADMIN', isGlobal: true, branchCodes: [] },
+  { email: 'superadmin@dev.local', username: SUPERADMIN_USERNAME, firstName: 'Sam', lastName: 'Admin', role: 'SUPER_ADMIN', isGlobal: true, branchCodes: [] },
   { email: 'admin@dev.local', username: 'admin', firstName: 'Alex', lastName: 'Admin', role: 'ADMIN', isGlobal: true, branchCodes: [] },
   { email: 'manager.glasgow@dev.local', username: 'manager.gla', firstName: 'Gina', lastName: 'Glasgow', role: 'BRANCH_MANAGER', isGlobal: false, branchCodes: ['GLA'] },
   { email: 'manager.edinburgh@dev.local', username: 'manager.edi', firstName: 'Ewan', lastName: 'Edinburgh', role: 'BRANCH_MANAGER', isGlobal: false, branchCodes: ['EDI'] },
@@ -94,24 +97,31 @@ const DEV_ACCOUNTS: DevAccount[] = [
 
 async function seedUsers() {
   const passwordHash = await hash(DEV_PASSWORD);
+  const superAdminPasswordHash = await hash(SUPERADMIN_PASSWORD);
   const roles = await prisma.role.findMany();
   const roleByName = new Map(roles.map((r) => [r.name, r.id]));
   const branches = await prisma.branch.findMany();
   const branchByCode = new Map(branches.map((b) => [b.code, b.id]));
 
   for (const account of DEV_ACCOUNTS) {
+    const accountPasswordHash =
+      account.role === 'SUPER_ADMIN' ? superAdminPasswordHash : passwordHash;
     const user = await prisma.user.upsert({
       where: { email: account.email },
       create: {
         email: account.email,
         username: account.username,
-        passwordHash,
+        passwordHash: accountPasswordHash,
         firstName: account.firstName,
         lastName: account.lastName,
         isGlobal: account.isGlobal,
         isActive: true,
       },
-      update: { isGlobal: account.isGlobal, username: account.username },
+      update: {
+        isGlobal: account.isGlobal,
+        username: account.username,
+        ...(account.role === 'SUPER_ADMIN' ? { passwordHash: accountPasswordHash } : {}),
+      },
     });
     await prisma.userRole.upsert({
       where: { userId_roleId: { userId: user.id, roleId: roleByName.get(account.role)! } },

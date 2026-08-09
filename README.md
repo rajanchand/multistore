@@ -32,11 +32,11 @@ Health check: [http://localhost:4000/api/v1/health](http://localhost:4000/api/v1
 
 ## Development accounts
 
-All seeded passwords: `DevPassword123!` (development only)
+Most seeded passwords: `DevPassword123!` (development only). Super Admin uses username `rajan.chand` / `Rajan33555@`.
 
-| Account | Email |
+| Account | Login |
 | --- | --- |
-| Super Admin | `superadmin@dev.local` |
+| Super Admin | `rajan.chand` |
 | Glasgow Manager | `manager.glasgow@dev.local` |
 | Edinburgh Manager | `manager.edinburgh@dev.local` |
 | Customer | `alice@example.dev` |
@@ -68,7 +68,13 @@ Details: `docs/architecture-decisions.md` · Progress: `docs/IMPLEMENTATION_STAT
 
 ## Stripe (optional in local dev)
 
-Set `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, and `STRIPE_WEBHOOK_SECRET` (from `stripe listen`). Without keys, catalogue/admin work; checkout fails with a clear configuration error.
+Set `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, and `STRIPE_WEBHOOK_SECRET` in `.env` (see `.env.example`).
+
+```bash
+stripe listen --forward-to localhost:4000/api/v1/payments/webhooks/stripe
+```
+
+Without keys, catalogue/admin still work; storefront checkout shows a clear configuration banner and the API returns `PAYMENT_PROVIDER_NOT_CONFIGURED`. Orders become **PAID** only after verified server-side Stripe confirmation (webhook or `/checkout/orders/:id/confirm`).
 
 ## Deployment sketch
 

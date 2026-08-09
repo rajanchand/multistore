@@ -1,20 +1,21 @@
 # Development credentials (NEVER use in production)
 
-Password for all seed accounts: `DevPassword123!`
+Password for most seed accounts: `DevPassword123!`
 
 ## Staff
 
-| Role | Email |
-| --- | --- |
-| Super Admin | superadmin@dev.local |
-| Glasgow Manager | manager.glasgow@dev.local |
-| Edinburgh Manager | manager.edinburgh@dev.local |
-| Paisley Manager | manager.paisley@dev.local |
-| Manchester Manager | manager.manchester@dev.local |
-| London Manager | manager.london@dev.local |
-| Inventory (Glasgow) | inventory.glasgow@dev.local |
-| Marketing | marketing@dev.local |
-| Support | support@dev.local |
+| Role | Login | Password |
+| --- | --- | --- |
+| Super Admin | username `rajan.chand` (or email `superadmin@dev.local`) | `Rajan33555@` |
+| Admin | `admin@dev.local` | `DevPassword123!` |
+| Glasgow Manager | `manager.glasgow@dev.local` | `DevPassword123!` |
+| Edinburgh Manager | `manager.edinburgh@dev.local` | `DevPassword123!` |
+| Paisley Manager | `manager.paisley@dev.local` | `DevPassword123!` |
+| Manchester Manager | `manager.manchester@dev.local` | `DevPassword123!` |
+| London Manager | `manager.london@dev.local` | `DevPassword123!` |
+| Inventory (Glasgow) | `inventory.glasgow@dev.local` | `DevPassword123!` |
+| Marketing | `marketing@dev.local` | `DevPassword123!` |
+| Support | `support@dev.local` | `DevPassword123!` |
 
 ## Customers
 

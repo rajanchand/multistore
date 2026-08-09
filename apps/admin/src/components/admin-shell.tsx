@@ -25,6 +25,7 @@ import {
   Users,
   Warehouse,
   Shield,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { cn } from '@repo/ui';
 import { BranchSwitcher } from '@/components/branch-switcher';
@@ -57,6 +58,12 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/categories', label: 'Categories', icon: Tags, permission: 'category.read' },
       { href: '/brands', label: 'Brands', icon: Tag, permission: 'brand.read' },
       { href: '/inventory', label: 'Inventory', icon: Warehouse, permission: 'inventory.read' },
+      {
+        href: '/inventory/transfers',
+        label: 'Transfers',
+        icon: ArrowLeftRight,
+        permission: 'inventory.transfer',
+      },
       { href: '/bulk-operations', label: 'Bulk Operations', icon: Boxes, permission: 'product.bulk_manage' },
     ],
   },

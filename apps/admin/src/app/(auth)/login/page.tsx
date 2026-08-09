@@ -7,8 +7,8 @@ import { API_URL } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('superadmin@dev.local');
-  const [password, setPassword] = useState('DevPassword123!');
+  const [email, setEmail] = useState('rajan.chand');
+  const [password, setPassword] = useState('Rajan33555@');
   const [mfaCode, setMfaCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [needsMfa, setNeedsMfa] = useState(false);
@@ -107,7 +107,7 @@ export default function LoginPage() {
             </Button>
           </form>
           <p className="mt-4 text-xs text-muted-foreground">
-            Dev: superadmin / admin@dev.local / DevPassword123!
+            Super Admin: rajan.chand · other seed accounts use DevPassword123!
           </p>
         </CardContent>
       </Card>

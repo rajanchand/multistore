@@ -24,6 +24,8 @@
 ## Other controls
 
 - Zod validation on all mutating payloads (mass-assignment resistant)
-- Helmet security headers, CORS allowlist, CSP-ready Next apps
+- Helmet security headers, CORS allowlist (`APP_URL` + `ADMIN_URL`, with localhost ↔ 127.0.0.1 mirrors), CSP-ready Next apps
+- In production, set `APP_URL` / `ADMIN_URL` to the real storefront and admin origins or credentialed browser calls fail CORS
 - Audit log redacts secrets
 - Soft-delete for catalogue/users; hard-delete forbidden for orders/payments/audit
+- Authorised branch IDs come from the DB session — never trust client-supplied branch IDs for access control

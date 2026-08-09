@@ -183,4 +183,22 @@ export class SettingsService {
     ]);
     return { store, social, delivery, plugins, paymentMethods };
   }
+
+  /**
+   * Safe for the storefront: publishable key is designed to be public.
+   * Never expose STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET here.
+   */
+  getPublicPaymentConfig() {
+    const env = loadServerEnv();
+    const publishableKey = env.STRIPE_PUBLISHABLE_KEY?.trim() || null;
+    const secretConfigured = Boolean(env.STRIPE_SECRET_KEY?.trim());
+    return {
+      provider: 'stripe' as const,
+      configured: secretConfigured && Boolean(publishableKey),
+      publishableKey,
+      message: secretConfigured && publishableKey
+        ? null
+        : 'Stripe is not configured. Set STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY (test keys) in the API .env, and restart the API. For webhooks locally run: stripe listen --forward-to localhost:4000/api/v1/payments/webhooks/stripe',
+    };
+  }
 }

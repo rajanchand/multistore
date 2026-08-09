@@ -36,6 +36,12 @@ export class StorefrontController {
     return this.settings.publicSettings();
   }
 
+  /** Public Stripe publishable key + configured flag for checkout UI. */
+  @Get('payment-config')
+  paymentConfig() {
+    return this.settings.getPublicPaymentConfig();
+  }
+
   @Get('branches')
   branches() {
     return this.storefront.branches();

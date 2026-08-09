@@ -39,10 +39,11 @@ describe('Auth + branch isolation (integration)', () => {
   it('logs in superadmin', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'superadmin@dev.local', password: 'DevPassword123!' })
+      .send({ email: 'rajan.chand', password: 'Rajan33555@' })
       .expect(200);
     expect(res.body.token).toBeTruthy();
     expect(res.body.user.email).toBe('superadmin@dev.local');
+    expect(res.body.user.username).toBe('rajan.chand');
   });
 
   it('denies Glasgow manager access to Edinburgh branch detail', async () => {
@@ -61,7 +62,7 @@ describe('Auth + branch isolation (integration)', () => {
     // Fetch Edinburgh id via a direct DB-less approach: try listing as superadmin.
     const adminLogin = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'superadmin@dev.local', password: 'DevPassword123!' })
+      .send({ email: 'rajan.chand', password: 'Rajan33555@' })
       .expect(200);
     const all = await request(app.getHttpServer())
       .get('/api/v1/branches')

@@ -2,7 +2,7 @@
 
 Legend: `[ ]` Not started · `[~]` In progress · `[x]` Complete · `[!]` Blocked
 
-**Last verified:** 2026-08-09 — Storefront location gate (postcode / nearest branch); product images; HQ branch switcher; visual refresh.
+**Last verified:** 2026-08-09 — Multi-step storefront checkout + Stripe Elements; public payment-config; admin stock transfers UI; CONTRIBUTING.md.
 
 ## Runtime (verified)
 
@@ -28,9 +28,9 @@ pnpm dev               # or: pnpm dev:api / dev:admin / dev:storefront
 
 ### Seed credentials (dev only)
 
-Password for all: `DevPassword123!`
+Most seed passwords: `DevPassword123!`
 
-- Super Admin: `superadmin@dev.local`
+- Super Admin: username `rajan.chand` / `Rajan33555@`
 - Glasgow Manager: `manager.glasgow@dev.local`
 - Customer: `alice@example.dev`
 
@@ -89,7 +89,8 @@ Password for all: `DevPassword123!`
 - [x] Bulk operations (BullMQ queue + processor)
 - [x] Inventory dashboard API + stock movement ledger
 - [x] Stock transfers state machine API
-- [~] Rich product editor / transfer UI (API complete; admin UI basic)
+- [x] Admin stock transfer UI (`/inventory/transfers`, create + status transitions)
+- [~] Rich product editor (API complete; admin UI basic)
 
 ## Phase 11–13 — Storefront, Cart, Checkout
 
@@ -97,7 +98,8 @@ Password for all: `DevPassword123!`
 - [x] Branch selector with per-branch catalogue
 - [x] Cart (server-authoritative pricing)
 - [x] Checkout API with concurrency-safe stock reservation
-- [~] Full multi-step checkout UI + Stripe Elements (API ready; UI prompts login)
+- [x] Multi-step checkout UI (fulfilment/address → review → Stripe Payment Element)
+- [x] `GET /storefront/payment-config` (publishable key + configured flag; clear message when unset)
 
 ## Phase 14–15 — Payments & Orders
 
@@ -107,7 +109,7 @@ Password for all: `DevPassword123!`
 - [x] Order lifecycle + status history
 - [x] Admin orders list + order detail (`/orders/[id]`)
 - [x] Order source channel: Online / POS / Cash (schema, seed, list filters, detail badges, reports)
-- [!] Live Stripe checkout needs test keys in `.env` (optional for local catalogue/admin)
+- [!] Live Stripe checkout needs test keys in `.env` (optional for local catalogue/admin; UI banners when missing)
 
 ## Phase 16–22 — Commerce Operations
 
@@ -130,13 +132,14 @@ Password for all: `DevPassword123!`
 - [x] Security headers / CORS / Zod validation / audit redaction (baseline)
 - [x] Unit tests (money, auth tokens, pricing, branch access) — passing
 - [~] Integration tests present; workers skipped under `NODE_ENV=test`
-- [ ] Playwright E2E
+- [~] Playwright smoke config + one path test (`apps/storefront/e2e`) — **CI-optional** (`pnpm --filter @repo/storefront test:e2e`; not in `.github/workflows/ci.yml`)
 - [x] CI workflow scaffold (`.github/workflows/ci.yml`)
 - [x] Production Dockerfiles (`Dockerfile.api`, `Dockerfile.admin`, `Dockerfile.storefront`)
 - [x] Next.js `output: 'standalone'` + default `NEXT_PUBLIC_API_URL` for production builds
 - [x] Admin `/api/logout` route (clears session + redirects to login)
 - [x] Menu/route audit: all admin sidebar + storefront header/footer links resolve (no 404)
 - [x] Deployment & security docs
+- [x] `CONTRIBUTING.md` (local setup + never trust client branch IDs)
 
 ## Fixes (2026-08-09) — Product create pricing & stores
 
@@ -150,6 +153,14 @@ Create product now accepts original price (pence), optional sale price + % disco
 - **Dashboard:** today strip, clickable KPIs, branch compare, recent activity, low-stock links.
 - **Product images:** admin URL/upload + reorder (primary first); list thumbnails; storefront gallery; validation accepts http(s) or `data:image`; seed refreshes picsum galleries.
 
+## Checkout + Stripe (2026-08-09)
+
+- Storefront `/checkout`: login gate → fulfilment (delivery address or click & collect) → review → Stripe Payment Element pay.
+- API `GET /storefront/payment-config` exposes publishable key + `configured` flag (never secret/webhook keys).
+- Without `STRIPE_*` keys: amber banner on checkout + API `PAYMENT_PROVIDER_NOT_CONFIGURED` (no silent failure).
+- After client `confirmPayment`, storefront calls `POST /checkout/orders/:id/confirm`; order **PAID** only after server verifies provider state (webhook idempotent via `PaymentEvent`).
+- `.env.example` documents `stripe listen --forward-to localhost:4000/api/v1/payments/webhooks/stripe`.
+
 ## Admin areas added (2026-08-09)
 
 | Area | Admin routes | API | Permission |
@@ -159,8 +170,9 @@ Create product now accepts original price (pence), optional sale price + % disco
 | Login sessions | `/sessions` | `GET/DELETE /auth/sessions` | `settings.manage` (nav) |
 | Campaigns | `/campaigns`, `/new`, `/[id]` | `/campaigns` | `campaign.manage` |
 | SMS | `/sms` | `GET /sms`, `POST /sms/send` | `sms.send` |
+| Stock transfers | `/inventory/transfers`, `/new` | `/inventory/transfers` | `inventory.transfer` |
 
-**How to use:** log in as `superadmin@dev.local` / `DevPassword123!`. Sidebar shows permission-gated items. SMS defaults to `LogSmsProvider` (API console); set `SMS_PROVIDER=twilio` + `TWILIO_*` for live send. Seed includes demo FAQs, about sections, payment methods, and campaign `spring-energy-push`.
+**How to use:** log in as `rajan.chand` / `Rajan33555@`. Sidebar shows permission-gated items. SMS defaults to `LogSmsProvider` (API console); set `SMS_PROVIDER=twilio` + `TWILIO_*` for live send. Seed includes demo FAQs, about sections, payment methods, and campaign `spring-energy-push`.
 
 ## Fixes (2026-08-09) — Branches & menu 404s
 
@@ -177,8 +189,9 @@ Create product now accepts original price (pence), optional sale price + % disco
 
 ## Known gaps (non-blocking for local run)
 
-1. Stripe keys not required until testing live payment intents.
-2. Some admin screens remain list/read-focused vs full API surface (promotions/banners editors, transfer UI).
-3. Checkout UI is a sign-in gate; wire Stripe Elements after setting test keys.
-4. Playwright E2E not yet added.
-5. Next.js apps use ESLint 9 with `eslint-config-next` peer warnings (non-blocking).
+1. Stripe test keys still required in `.env` for live PaymentIntents (UI/API now explain clearly when missing).
+2. Some admin screens remain list/read-focused vs full API surface (promotions create/edit still thin; banners already have editors).
+3. Playwright: smoke scaffold only (location → browse → cart); not wired into CI.
+4. Next.js apps use ESLint 9 with `eslint-config-next` peer warnings (non-blocking).
+5. Production VPS deploy remains a separate track.
+6. Promotions admin remains list/status-focused (create API exists; richer editor still open).
