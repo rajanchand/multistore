@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   Req,
   Res,
@@ -19,11 +20,13 @@ import {
   loginSchema,
   mfaVerifySchema,
   resetPasswordSchema,
+  updateProfileSchema,
   type ChangePasswordInput,
   type ForgotPasswordInput,
   type LoginInput,
   type MfaVerifyInput,
   type ResetPasswordInput,
+  type UpdateProfileInput,
 } from '@repo/validation';
 import { loadServerEnv } from '@repo/config';
 import { AuthService } from './auth.service';
@@ -104,17 +107,22 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(AdminAuthGuard)
-  me(@CurrentUser() user: AuthenticatedUser) {
+  async me(@CurrentUser() user: AuthenticatedUser) {
+    const profile = await this.auth.getProfile(user.id);
     return {
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      isGlobal: user.isGlobal,
-      mfaEnabled: user.mfaEnabled,
+      ...profile,
       permissions: [...user.permissions],
       branchIds: [...user.branchIds],
     };
+  }
+
+  @Patch('profile')
+  @UseGuards(AdminAuthGuard)
+  updateProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(updateProfileSchema)) body: UpdateProfileInput,
+  ) {
+    return this.auth.updateProfile(user.id, body);
   }
 
   @Post('forgot-password')

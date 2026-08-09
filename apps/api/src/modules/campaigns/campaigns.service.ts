@@ -21,15 +21,13 @@ export class CampaignsService {
         deletedAt: null,
         ...(user.isGlobal
           ? {}
-          : {
-              OR: [
-                { branches: { none: {} } },
-                { branches: { some: { branchId: { in: [...user.branchIds] } } } },
-              ],
-            }),
+          : { branches: { some: { branchId: { in: [...user.branchIds] } } } }),
       },
       include: {
-        branches: { include: { branch: { select: { id: true, name: true, code: true } } } },
+        branches: {
+          where: user.isGlobal ? {} : { branchId: { in: [...user.branchIds] } },
+          include: { branch: { select: { id: true, name: true, code: true } } },
+        },
         createdBy: { select: { id: true, firstName: true, lastName: true } },
         _count: { select: { smsMessages: true } },
       },
@@ -47,18 +45,19 @@ export class CampaignsService {
       },
     });
     if (!campaign) throw Errors.notFound('Campaign');
-    if (!user.isGlobal && campaign.branches.length > 0) {
-      this.branchAccess.assertCanAccessAll(
-        user,
-        campaign.branches.map((b) => b.branchId),
-      );
-    }
+    this.branchAccess.assertCanManageBranchScoped(user, {
+      allBranches: campaign.branches.length === 0,
+      branches: campaign.branches,
+    });
     return campaign;
   }
 
   async create(user: AuthenticatedUser, input: CreateCampaignInput, ctx: RequestContext) {
     const { branchIds, content, audience, ...data } = input;
     if (branchIds.length > 0) this.branchAccess.assertCanAccessAll(user, branchIds);
+    if (branchIds.length === 0 && !user.isGlobal) {
+      throw Errors.forbidden('Only HQ users can create campaigns for all branches.');
+    }
     const conflict = await this.prisma.campaign.findFirst({ where: { slug: input.slug } });
     if (conflict) throw Errors.conflict('CAMPAIGN_EXISTS', 'A campaign with this slug already exists.');
 
@@ -86,7 +85,12 @@ export class CampaignsService {
   async update(user: AuthenticatedUser, id: string, input: UpdateCampaignInput, ctx: RequestContext) {
     await this.getById(user, id);
     const { branchIds, content, audience, ...data } = input;
-    if (branchIds) this.branchAccess.assertCanAccessAll(user, branchIds);
+    if (branchIds) {
+      this.branchAccess.assertCanAccessAll(user, branchIds);
+      if (branchIds.length === 0 && !user.isGlobal) {
+        throw Errors.forbidden('Only HQ users can clear campaign branch assignments.');
+      }
+    }
 
     const campaign = await this.prisma.$transaction(async (tx) => {
       if (branchIds) {

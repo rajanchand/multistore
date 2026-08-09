@@ -107,6 +107,19 @@ export const sendSmsSchema = z
   });
 export type SendSmsInput = z.infer<typeof sendSmsSchema>;
 
+/** Context for Gemini (or template fallback) SMS copy generation. */
+export const generateSmsSchema = z.object({
+  mode: z.enum(['single', 'bulk']).default('bulk'),
+  campaignId: uuidSchema.optional(),
+  segment: z.enum(['all_customers', 'marketing_opt_in', 'branch_customers']).optional(),
+  branchId: uuidSchema.optional(),
+  /** Selected promotion / offer to promote in the message. */
+  promotionId: uuidSchema.optional(),
+  /** Optional free-text hint for the model. */
+  notes: z.string().trim().max(500).optional(),
+});
+export type GenerateSmsInput = z.infer<typeof generateSmsSchema>;
+
 const optionalUrl = z.union([z.literal(''), z.string().trim().url().max(500)]).optional();
 const optionalText = (max: number) => z.union([z.literal(''), z.string().trim().max(max)]).optional();
 

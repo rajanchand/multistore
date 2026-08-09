@@ -530,6 +530,15 @@ export const PRODUCTS: SeedProduct[] = [
 ];
 
 export const CUSTOMERS = [
+  /** Synthetic customer for in-store POS / cash walk-in sales (orders require customerId). */
+  {
+    email: 'walk-in@pos.local',
+    firstName: 'Walk-in',
+    lastName: 'Customer',
+    phone: undefined,
+    marketingOptIn: false,
+    address: undefined,
+  },
   { email: 'alice@example.dev', firstName: 'Alice', lastName: 'Anderson', phone: '+44 7700 900001', marketingOptIn: true, address: { line1: '10 Rose Street', city: 'Glasgow', postcode: 'G1 5AA' } },
   { email: 'bob@example.dev', firstName: 'Bob', lastName: 'Brown', phone: '+44 7700 900002', marketingOptIn: false, address: { line1: '22 Leith Walk', city: 'Edinburgh', postcode: 'EH6 8AA' } },
   { email: 'carol@example.dev', firstName: 'Carol', lastName: 'Campbell', phone: '+44 7700 900003', marketingOptIn: true, address: { line1: '3 Mill Lane', city: 'Paisley', postcode: 'PA1 1XX' } },

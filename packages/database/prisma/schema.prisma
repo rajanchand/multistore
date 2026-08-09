@@ -19,6 +19,8 @@ datasource db {
 model User {
   id           String    @id @default(uuid())
   email        String    @unique
+  /// Unique login handle (separate from email).
+  username     String    @unique
   passwordHash String
   firstName    String
   lastName     String
@@ -54,6 +56,7 @@ model User {
   smsCreated       SmsMessage[]      @relation("SmsCreator")
 
   @@index([email])
+  @@index([username])
   @@index([isActive])
 }
 
@@ -1331,6 +1334,7 @@ model BulkOperationItem {
   operation BulkOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
 
   @@index([operationId, status])
+  /// One work item per product×branch (variant actions expand variants at apply time).
   @@unique([operationId, branchId, productId])
 }
 

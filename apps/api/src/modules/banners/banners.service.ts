@@ -29,8 +29,34 @@ export class BannersService {
     });
   }
 
+  async get(user: AuthenticatedUser, id: string) {
+    const banner = await this.prisma.banner.findFirst({
+      where: { id, deletedAt: null },
+      include: {
+        branches: { include: { branch: { select: { id: true, name: true, code: true } } } },
+      },
+    });
+    if (!banner) throw Errors.notFound('Banner');
+    if (
+      !user.isGlobal &&
+      !banner.isGlobal &&
+      !banner.branches.some((b) => user.branchIds.has(b.branchId))
+    ) {
+      throw Errors.forbidden();
+    }
+    return banner;
+  }
+
   async create(user: AuthenticatedUser, input: CreateBannerInput, ctx: RequestContext) {
-    const { branchIds, ...data } = input;
+    const { branchIds, ...raw } = input;
+    const data = {
+      ...raw,
+      image: raw.image || null,
+      mobileImage: raw.mobileImage || null,
+      ctaLabel: raw.ctaLabel || null,
+      ctaUrl: raw.ctaUrl || null,
+      body: raw.body || null,
+    };
     if (branchIds.length > 0) this.branchAccess.assertCanAccessAll(user, branchIds);
     if (!input.isGlobal && branchIds.length === 0) {
       throw Errors.badRequest('BRANCHES_REQUIRED', 'Select branches or mark the banner as global.');
@@ -45,7 +71,9 @@ export class BannersService {
         isGlobal: input.isGlobal,
         branches: { create: branchIds.map((branchId) => ({ branchId })) },
       },
-      include: { branches: true },
+      include: {
+        branches: { include: { branch: { select: { id: true, name: true, code: true } } } },
+      },
     });
 
     await this.audit.log({
@@ -65,11 +93,35 @@ export class BannersService {
     input: Partial<CreateBannerInput>,
     ctx: RequestContext,
   ) {
-    const existing = await this.prisma.banner.findFirst({ where: { id, deletedAt: null } });
-    if (!existing) throw Errors.notFound('Banner');
+    const existing = await this.get(user, id);
+    if (existing.isGlobal && !user.isGlobal) {
+      throw Errors.forbidden('Only HQ users can edit global banners.');
+    }
+    if (
+      !user.isGlobal &&
+      !existing.isGlobal &&
+      !existing.branches.some((b) => user.branchIds.has(b.branchId))
+    ) {
+      throw Errors.branchAccessDenied();
+    }
 
-    const { branchIds, ...data } = input;
+    const { branchIds, ...raw } = input;
     if (branchIds) this.branchAccess.assertCanAccessAll(user, branchIds);
+    if (input.isGlobal === true && !user.isGlobal) {
+      throw Errors.forbidden('Only HQ users can mark banners as global.');
+    }
+    if (input.isGlobal === false && branchIds && branchIds.length === 0) {
+      throw Errors.badRequest('BRANCHES_REQUIRED', 'Select branches or mark the banner as global.');
+    }
+
+    const data = {
+      ...raw,
+      ...(raw.image !== undefined ? { image: raw.image || null } : {}),
+      ...(raw.mobileImage !== undefined ? { mobileImage: raw.mobileImage || null } : {}),
+      ...(raw.ctaLabel !== undefined ? { ctaLabel: raw.ctaLabel || null } : {}),
+      ...(raw.ctaUrl !== undefined ? { ctaUrl: raw.ctaUrl || null } : {}),
+      ...(raw.body !== undefined ? { body: raw.body || null } : {}),
+    };
 
     const banner = await this.prisma.$transaction(async (tx) => {
       if (branchIds) {
@@ -97,8 +149,10 @@ export class BannersService {
   }
 
   async archive(user: AuthenticatedUser, id: string, ctx: RequestContext) {
-    const existing = await this.prisma.banner.findFirst({ where: { id, deletedAt: null } });
-    if (!existing) throw Errors.notFound('Banner');
+    const existing = await this.get(user, id);
+    if (existing.isGlobal && !user.isGlobal) {
+      throw Errors.forbidden('Only HQ users can archive global banners.');
+    }
     const banner = await this.prisma.banner.update({
       where: { id },
       data: { status: 'ARCHIVED', deletedAt: new Date() },

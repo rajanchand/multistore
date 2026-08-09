@@ -56,8 +56,14 @@ export function CatalogueEntityForm({
   const [image, setImage] = useState(initial?.image ?? '');
   const [sortOrder, setSortOrder] = useState(String(initial?.sortOrder ?? 0));
   const [isVisible, setIsVisible] = useState(initial?.isVisible ?? true);
-  const [allBranches, setAllBranches] = useState(initial?.allBranches ?? true);
-  const [branchIds, setBranchIds] = useState<string[]>(initial?.branchIds ?? []);
+  const canUseAllBranches = branches.length > 1 || (initial?.allBranches ?? false);
+  const [allBranches, setAllBranches] = useState(
+    // Single-branch staff (API already scoped /branches) default to their store only.
+    initial?.allBranches ?? branches.length !== 1,
+  );
+  const [branchIds, setBranchIds] = useState<string[]>(
+    initial?.branchIds ?? (branches.length === 1 ? [branches[0]!.id] : []),
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -230,14 +236,16 @@ export function CatalogueEntityForm({
             <p className="text-sm font-medium">Branch visibility</p>
             <p className="text-xs text-muted-foreground">{selectedSummary}</p>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={allBranches}
-              onChange={(e) => setAllBranches(e.target.checked)}
-            />
-            All branches
-          </label>
+          {canUseAllBranches && (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={allBranches}
+                onChange={(e) => setAllBranches(e.target.checked)}
+              />
+              All branches
+            </label>
+          )}
         </div>
         {!allBranches && (
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

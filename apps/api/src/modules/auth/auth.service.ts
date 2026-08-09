@@ -37,13 +37,17 @@ export class AuthService {
    * Returns the raw session token for cookie issuance.
    */
   async loginAdmin(
-    email: string,
+    emailOrUsername: string,
     password: string,
     mfaCode: string | undefined,
     ctx: RequestContext,
   ): Promise<{ token: string; user: User }> {
+    const identifier = emailOrUsername.trim().toLowerCase();
     const user = await this.prisma.user.findFirst({
-      where: { email, deletedAt: null },
+      where: {
+        deletedAt: null,
+        OR: [{ email: identifier }, { username: identifier }],
+      },
     });
 
     // Always verify against some hash to keep timing uniform for unknown emails.
@@ -52,12 +56,12 @@ export class AuthService {
     const passwordOk = await verifyPassword(user?.passwordHash ?? dummyHash, password);
 
     if (!user || !user.isActive) {
-      await this.recordLogin(email, false, 'unknown_or_inactive', ctx, user?.id);
+      await this.recordLogin(identifier, false, 'unknown_or_inactive', ctx, user?.id);
       throw Errors.invalidCredentials();
     }
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
-      await this.recordLogin(email, false, 'locked', ctx, user.id);
+      await this.recordLogin(identifier, false, 'locked', ctx, user.id);
       throw Errors.accountLocked();
     }
 
@@ -73,7 +77,7 @@ export class AuthService {
               : null,
         },
       });
-      await this.recordLogin(email, false, 'bad_password', ctx, user.id);
+      await this.recordLogin(identifier, false, 'bad_password', ctx, user.id);
       throw Errors.invalidCredentials();
     }
 
@@ -82,7 +86,7 @@ export class AuthService {
       const env = loadServerEnv();
       const secret = decryptMfaSecret(user.mfaSecretEnc!, env.AUTH_SECRET);
       if (!verifyTotp(secret, mfaCode)) {
-        await this.recordLogin(email, false, 'bad_mfa', ctx, user.id);
+        await this.recordLogin(identifier, false, 'bad_mfa', ctx, user.id);
         throw Errors.invalidMfaCode();
       }
     }
@@ -99,7 +103,7 @@ export class AuthService {
       userAgent: ctx.userAgent,
     });
 
-    await this.recordLogin(email, true, null, ctx, user.id);
+    await this.recordLogin(identifier, true, null, ctx, user.id);
     await this.audit.log({
       actorUserId: user.id,
       action: 'AUTH_LOGIN_SUCCESS',
@@ -234,6 +238,74 @@ export class AuthService {
       data: { passwordHash: await hashPassword(newPassword) },
     });
     await this.sessions.revokeAll({ userId }, keepSessionId);
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        isActive: true,
+        isGlobal: true,
+        mfaEnabled: true,
+        lastLoginAt: true,
+        createdAt: true,
+        roles: { include: { role: { select: { id: true, name: true, description: true } } } },
+        branches: { include: { branch: { select: { id: true, name: true, code: true } } } },
+      },
+    });
+    if (!user) throw Errors.notFound('User');
+    return user;
+  }
+
+  async updateProfile(
+    userId: string,
+    input: { firstName: string; lastName: string; username: string; email: string },
+  ) {
+    const existing = await this.prisma.user.findFirst({ where: { id: userId, deletedAt: null } });
+    if (!existing) throw Errors.notFound('User');
+
+    if (input.email !== existing.email) {
+      const taken = await this.prisma.user.findFirst({
+        where: { email: input.email, deletedAt: null, NOT: { id: userId } },
+      });
+      if (taken) throw Errors.conflict('EMAIL_IN_USE', 'A user with this email already exists.');
+    }
+    if (input.username !== existing.username) {
+      const taken = await this.prisma.user.findFirst({
+        where: { username: input.username, deletedAt: null, NOT: { id: userId } },
+      });
+      if (taken) throw Errors.conflict('USERNAME_IN_USE', 'A user with this username already exists.');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        firstName: input.firstName,
+        lastName: input.lastName,
+        username: input.username,
+        email: input.email,
+      },
+    });
+
+    await this.audit.log({
+      actorUserId: userId,
+      action: 'PROFILE_UPDATED',
+      resourceType: 'User',
+      resourceId: userId,
+      newValue: {
+        firstName: input.firstName,
+        lastName: input.lastName,
+        username: input.username,
+        email: input.email,
+      },
+    });
+
+    return this.getProfile(userId);
   }
 
   private async recordLogin(

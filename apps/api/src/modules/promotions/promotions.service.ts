@@ -19,9 +19,7 @@ export class PromotionsService {
     const where = {
       deletedAt: null,
       ...(params.status ? { status: params.status } : {}),
-      ...(user.isGlobal
-        ? {}
-        : { OR: [{ allBranches: true }, { branches: { some: { branchId: { in: [...user.branchIds] } } } }] }),
+      ...this.branchAccess.allBranchesOrAssignedFilter(user),
     };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.promotion.findMany({
@@ -72,8 +70,12 @@ export class PromotionsService {
   }
 
   async setStatus(user: AuthenticatedUser, id: string, status: PromotionStatus, ctx: RequestContext) {
-    const existing = await this.prisma.promotion.findFirst({ where: { id, deletedAt: null } });
+    const existing = await this.prisma.promotion.findFirst({
+      where: { id, deletedAt: null },
+      include: { branches: true },
+    });
     if (!existing) throw Errors.notFound('Promotion');
+    this.branchAccess.assertCanManageBranchScoped(user, existing);
     const promotion = await this.prisma.promotion.update({
       where: { id },
       data: { status, ...(status === 'ARCHIVED' ? { deletedAt: new Date() } : {}) },
@@ -93,8 +95,10 @@ export class PromotionsService {
   async createCoupon(user: AuthenticatedUser, input: CreateCouponInput, ctx: RequestContext) {
     const promotion = await this.prisma.promotion.findFirst({
       where: { id: input.promotionId, deletedAt: null },
+      include: { branches: true },
     });
     if (!promotion) throw Errors.notFound('Promotion');
+    this.branchAccess.assertCanManageBranchScoped(user, promotion);
     const existing = await this.prisma.coupon.findUnique({ where: { code: input.code } });
     if (existing) throw Errors.conflict('COUPON_EXISTS', 'A coupon with this code already exists.');
 
@@ -110,15 +114,19 @@ export class PromotionsService {
     return coupon;
   }
 
-  async listCoupons(params: { page: number; pageSize: number }) {
+  async listCoupons(user: AuthenticatedUser, params: { page: number; pageSize: number }) {
+    const where = user.isGlobal
+      ? {}
+      : { promotion: this.branchAccess.allBranchesOrAssignedFilter(user) };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.coupon.findMany({
+        where,
         include: { promotion: { select: { id: true, name: true, type: true, status: true } } },
         orderBy: { createdAt: 'desc' },
         skip: (params.page - 1) * params.pageSize,
         take: params.pageSize,
       }),
-      this.prisma.coupon.count(),
+      this.prisma.coupon.count({ where }),
     ]);
     return { items, total, page: params.page, pageSize: params.pageSize, totalPages: Math.ceil(total / params.pageSize) };
   }

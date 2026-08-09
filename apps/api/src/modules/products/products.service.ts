@@ -29,6 +29,12 @@ export class ProductsService {
   async list(user: AuthenticatedUser, query: ProductListQuery) {
     if (query.branchId) this.branchAccess.assertCanAccess(user, query.branchId);
 
+    const scopedBranchIds = query.branchId
+      ? [query.branchId]
+      : user.isGlobal
+        ? undefined
+        : [...user.branchIds];
+
     const where: Prisma.ProductWhereInput = {
       deletedAt: null,
       ...(query.status ? { status: query.status } : {}),
@@ -43,8 +49,12 @@ export class ProductsService {
           }
         : {}),
       ...(query.categoryId ? { categories: { some: { categoryId: query.categoryId } } } : {}),
-      ...(query.branchId ? { branchProducts: { some: { branchId: query.branchId } } } : {}),
+      ...(scopedBranchIds
+        ? { branchProducts: { some: { branchId: { in: scopedBranchIds } } } }
+        : {}),
     };
+
+    const branchProductWhere = scopedBranchIds ? { branchId: { in: scopedBranchIds } } : {};
 
     const orderBy: Prisma.ProductOrderByWithRelationInput =
       query.sortBy === 'name'
@@ -63,6 +73,7 @@ export class ProductsService {
             select: { id: true, sku: true, name: true, defaultPrice: true, isDefault: true },
           },
           branchProducts: {
+            where: branchProductWhere,
             select: { branchId: true, sellingPrice: true, salePrice: true, isVisible: true },
           },
         },
@@ -110,6 +121,12 @@ export class ProductsService {
     });
     if (!product) throw Errors.notFound('Product');
 
+    // Branch users may only open products linked to their branches (or unlinked drafts).
+    if (!user.isGlobal && product.branchProducts.length === 0) {
+      const linkedElsewhere = await this.prisma.branchProduct.count({ where: { productId } });
+      if (linkedElsewhere > 0) throw Errors.notFound('Product');
+    }
+
     const inventory = await this.prisma.inventory.findMany({
       where: { productId, ...this.branchAccess.branchFilter(user) },
       select: { branchId: true, variantId: true, available: true, reserved: true, lowStockThreshold: true },
@@ -123,13 +140,16 @@ export class ProductsService {
     });
     if (conflict) throw Errors.conflict('PRODUCT_EXISTS', 'A product with this SKU or slug already exists.');
 
-    const { categoryIds, variants, salePrice, branchIds, ...productData } = input;
+    const { categoryIds, variants, salePrice, branchIds, initialStock, ...productData } = input;
     if (branchIds.length > 0) this.branchAccess.assertCanAccessAll(user, branchIds);
+
+    const productBarcode = productData.barcode ?? null;
 
     const product = await this.prisma.$transaction(async (tx) => {
       const created = await tx.product.create({
         data: {
           ...productData,
+          barcode: productBarcode,
           images: productData.images as Prisma.InputJsonValue,
           createdById: user.id,
           categories: { create: categoryIds.map((categoryId) => ({ categoryId })) },
@@ -145,7 +165,7 @@ export class ProductsService {
                 attributes: {},
                 defaultPrice: 0,
                 images: [],
-                barcode: undefined,
+                barcode: productBarcode,
                 costPrice: undefined,
                 weightGrams: undefined,
               },
@@ -155,7 +175,8 @@ export class ProductsService {
           data: {
             productId: created.id,
             sku: v.sku,
-            barcode: v.barcode,
+            // Inherit product barcode when variant barcode omitted so POS scans resolve either way.
+            barcode: v.barcode ?? productBarcode,
             name: v.name,
             attributes: v.attributes as Prisma.InputJsonValue,
             costPrice: v.costPrice,
@@ -174,7 +195,14 @@ export class ProductsService {
       action: 'PRODUCT_CREATED',
       resourceType: 'Product',
       resourceId: product.id,
-      newValue: { name: product.name, sku: product.sku, branchIds, salePrice: salePrice ?? null },
+      newValue: {
+        name: product.name,
+        sku: product.sku,
+        barcode: product.barcode,
+        branchIds,
+        salePrice: salePrice ?? null,
+        initialStock: initialStock ?? null,
+      },
       requestId: ctx.requestId,
       ipAddress: ctx.ip,
     });
@@ -204,6 +232,12 @@ export class ProductsService {
             },
             ctx,
           );
+          if (typeof initialStock === 'number') {
+            await this.prisma.inventory.update({
+              where: { branchId_variantId: { branchId, variantId: variant.id } },
+              data: { available: initialStock },
+            });
+          }
         }
       }
     }
@@ -223,13 +257,23 @@ export class ProductsService {
           data: categoryIds.map((categoryId) => ({ productId, categoryId })),
         });
       }
-      return tx.product.update({
+      const updated = await tx.product.update({
         where: { id: productId },
         data: {
           ...productData,
           images: productData.images as Prisma.InputJsonValue | undefined,
         },
       });
+
+      // Keep the default variant barcode in sync so POS lookups by variant barcode keep working.
+      if ('barcode' in productData) {
+        await tx.productVariant.updateMany({
+          where: { productId, isDefault: true, deletedAt: null },
+          data: { barcode: productData.barcode ?? null },
+        });
+      }
+
+      return updated;
     });
 
     await this.audit.log({

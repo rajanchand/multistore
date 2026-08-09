@@ -31,6 +31,11 @@ export class BannersController {
     return this.banners.list(user);
   }
 
+  @Get(':id')
+  get(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.banners.get(user, id);
+  }
+
   @Post()
   create(
     @CurrentUser() user: AuthenticatedUser,

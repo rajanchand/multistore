@@ -32,9 +32,16 @@ export class BulkOperationsService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    if (process.env.NODE_ENV === 'test' || process.env.DISABLE_WORKERS === '1') return;
+    if (process.env.NODE_ENV === 'test') return;
 
+    // Always create the queue so enqueue works even when the worker is disabled.
     this.queue = new Queue(BULK_QUEUE, { connection: this.redis });
+
+    if (process.env.DISABLE_WORKERS === '1') {
+      this.logger.warn('DISABLE_WORKERS=1 — bulk jobs will process inline after enqueue');
+      return;
+    }
+
     this.worker = new Worker(
       BULK_QUEUE,
       async (job) => {
@@ -76,16 +83,13 @@ export class BulkOperationsService implements OnModuleInit, OnModuleDestroy {
       throw Errors.badRequest('NO_PRODUCTS', 'No products matched the selection.');
     }
 
-    // Destructive actions require an explicit confirmation flag in payload.
     const destructive: BulkOperationAction[] = ['ARCHIVE', 'HIDE', 'REMOVE_PROMOTION'];
     if (destructive.includes(input.action as BulkOperationAction) && input.payload.confirm !== true) {
-      throw Errors.badRequest('CONFIRMATION_REQUIRED', 'Destructive bulk actions require payload.confirm = true.');
+      throw Errors.badRequest(
+        'CONFIRMATION_REQUIRED',
+        'Destructive bulk actions require payload.confirm = true.',
+      );
     }
-
-    const variants = await this.prisma.productVariant.findMany({
-      where: { productId: { in: productIds }, deletedAt: null },
-      select: { id: true, productId: true },
-    });
 
     const operation = await this.prisma.$transaction(async (tx) => {
       const op = await tx.bulkOperation.create({
@@ -99,22 +103,28 @@ export class BulkOperationsService implements OnModuleInit, OnModuleDestroy {
             categoryIds: input.categoryIds,
             payload: input.payload,
           } as Prisma.InputJsonValue,
-          totalItems: variants.length * input.branchIds.length,
+          // One item per product × branch (variants expanded at apply time).
+          totalItems: productIds.length * input.branchIds.length,
         },
       });
 
-      const items = [];
+      const items: Array<{
+        operationId: string;
+        branchId: string;
+        productId: string;
+        variantId: null;
+      }> = [];
       for (const branchId of input.branchIds) {
-        for (const variant of variants) {
+        for (const productId of productIds) {
           items.push({
             operationId: op.id,
             branchId,
-            productId: variant.productId,
-            variantId: variant.id,
+            productId,
+            variantId: null,
           });
         }
       }
-      // Chunk inserts to avoid oversized queries.
+
       const chunkSize = 1000;
       for (let i = 0; i < items.length; i += chunkSize) {
         await tx.bulkOperationItem.createMany({ data: items.slice(i, i + chunkSize) });
@@ -122,17 +132,29 @@ export class BulkOperationsService implements OnModuleInit, OnModuleDestroy {
       return op;
     });
 
-    await this.queue!.add(
-      'process',
-      { operationId: operation.id },
-      {
-        jobId: `bulk:${operation.id}`,
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: 200,
-        removeOnFail: 500,
-      },
-    );
+    if (this.queue) {
+      await this.queue.add(
+        'process',
+        { operationId: operation.id },
+        {
+          jobId: `bulk:${operation.id}`,
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 },
+          removeOnComplete: 200,
+          removeOnFail: 500,
+        },
+      );
+      // When workers are disabled, still process so admin UI stays usable in local/dev.
+      if (process.env.DISABLE_WORKERS === '1') {
+        void this.process(operation.id).catch((err) =>
+          this.logger.error(`Inline bulk process failed: ${err instanceof Error ? err.message : err}`),
+        );
+      }
+    } else {
+      void this.process(operation.id).catch((err) =>
+        this.logger.error(`Inline bulk process failed: ${err instanceof Error ? err.message : err}`),
+      );
+    }
 
     await this.audit.log({
       actorUserId: user.id,
@@ -159,14 +181,13 @@ export class BulkOperationsService implements OnModuleInit, OnModuleDestroy {
         items: {
           take: 50,
           orderBy: { createdAt: 'asc' },
-          where: { status: { in: ['FAILED', 'SUCCEEDED', 'PENDING'] } },
+          where: { status: { in: ['FAILED', 'SUCCEEDED', 'PENDING', 'SKIPPED'] } },
         },
         actor: { select: { id: true, firstName: true, lastName: true, email: true } },
       },
     });
     if (!op) throw Errors.notFound('Bulk operation');
     if (!user.isGlobal && op.actorUserId !== user.id) {
-      // Branch users may inspect ops that touch their branches.
       const touches = await this.prisma.bulkOperationItem.count({
         where: { operationId: id, branchId: { in: [...user.branchIds] } },
       });
@@ -176,7 +197,14 @@ export class BulkOperationsService implements OnModuleInit, OnModuleDestroy {
   }
 
   async list(user: AuthenticatedUser, page: number, pageSize: number) {
-    const where = user.isGlobal ? {} : { actorUserId: user.id };
+    const where = user.isGlobal
+      ? {}
+      : {
+          OR: [
+            { actorUserId: user.id },
+            { items: { some: { branchId: { in: [...user.branchIds] } } } },
+          ],
+        };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.bulkOperation.findMany({
         where,
@@ -217,7 +245,6 @@ export class BulkOperationsService implements OnModuleInit, OnModuleDestroy {
     let processed = op.processedItems;
     let failed = op.failedItems;
 
-    // Process in batches for memory safety.
     for (;;) {
       const batch = await this.prisma.bulkOperationItem.findMany({
         where: { operationId, status: 'PENDING' },
@@ -227,20 +254,23 @@ export class BulkOperationsService implements OnModuleInit, OnModuleDestroy {
 
       for (const item of batch) {
         try {
-          const oldValue = await this.applyItem(op.action, item, payload.payload);
+          const oldValue = await this.applyItem(op.action, item, payload.payload ?? {});
           await this.prisma.bulkOperationItem.update({
             where: { id: item.id },
             data: {
               status: 'SUCCEEDED',
               oldValue: (oldValue ?? undefined) as Prisma.InputJsonValue | undefined,
-              newValue: payload.payload as Prisma.InputJsonValue,
+              newValue: (payload.payload ?? {}) as Prisma.InputJsonValue,
             },
           });
           processed += 1;
         } catch (error) {
           await this.prisma.bulkOperationItem.update({
             where: { id: item.id },
-            data: { status: 'FAILED', error: error instanceof Error ? error.message : String(error) },
+            data: {
+              status: 'FAILED',
+              error: error instanceof Error ? error.message : String(error),
+            },
           });
           failed += 1;
         }
@@ -252,8 +282,7 @@ export class BulkOperationsService implements OnModuleInit, OnModuleDestroy {
       });
     }
 
-    const status =
-      failed === 0 ? 'COMPLETED' : processed === 0 ? 'FAILED' : 'PARTIAL_FAILURE';
+    const status = failed === 0 ? 'COMPLETED' : processed === 0 ? 'FAILED' : 'PARTIAL_FAILURE';
     await this.prisma.bulkOperation.update({
       where: { id: operationId },
       data: { status, completedAt: new Date(), processedItems: processed, failedItems: failed },
@@ -273,8 +302,6 @@ export class BulkOperationsService implements OnModuleInit, OnModuleDestroy {
     item: { branchId: string; productId: string; variantId: string | null },
     payload: Record<string, unknown>,
   ): Promise<Record<string, unknown> | null> {
-    if (!item.variantId) return null;
-
     switch (action) {
       case 'ADD_PRODUCT':
       case 'CHANGE_PRICE':
@@ -283,58 +310,76 @@ export class BulkOperationsService implements OnModuleInit, OnModuleDestroy {
       case 'PUBLISH':
       case 'HIDE':
       case 'CHANGE_AVAILABILITY': {
-        const existing = await this.prisma.branchProduct.findUnique({
-          where: { branchId_variantId: { branchId: item.branchId, variantId: item.variantId } },
-        });
-        const variant = await this.prisma.productVariant.findUniqueOrThrow({
-          where: { id: item.variantId },
-        });
-        let sellingPrice = existing?.sellingPrice ?? variant.defaultPrice;
-        let salePrice = existing?.salePrice ?? null;
-        let isVisible = existing?.isVisible ?? true;
-        let isAvailable = existing?.isAvailable ?? true;
+        const variants = item.variantId
+          ? await this.prisma.productVariant.findMany({
+              where: { id: item.variantId, deletedAt: null },
+            })
+          : await this.prisma.productVariant.findMany({
+              where: { productId: item.productId, deletedAt: null },
+            });
+        if (variants.length === 0) throw new Error('No variants found for product');
 
-        if (action === 'CHANGE_PRICE' && typeof payload.sellingPrice === 'number') {
-          sellingPrice = payload.sellingPrice;
-        }
-        if (action === 'SET_SALE_PRICE') {
-          salePrice = typeof payload.salePrice === 'number' ? payload.salePrice : null;
-        }
-        if (action === 'PERCENTAGE_ADJUSTMENT' && typeof payload.percentBps === 'number') {
-          sellingPrice = Math.max(0, Math.round((sellingPrice * (10000 + payload.percentBps)) / 10000));
-        }
-        if (action === 'PUBLISH') isVisible = true;
-        if (action === 'HIDE') isVisible = false;
-        if (action === 'CHANGE_AVAILABILITY' && typeof payload.isAvailable === 'boolean') {
-          isAvailable = payload.isAvailable;
-        }
+        const snapshots: Record<string, unknown>[] = [];
+        for (const variant of variants) {
+          const existing = await this.prisma.branchProduct.findUnique({
+            where: { branchId_variantId: { branchId: item.branchId, variantId: variant.id } },
+          });
+          let sellingPrice = existing?.sellingPrice ?? variant.defaultPrice;
+          let salePrice = existing?.salePrice ?? null;
+          let isVisible = existing?.isVisible ?? true;
+          let isAvailable = existing?.isAvailable ?? true;
 
-        await this.prisma.branchProduct.upsert({
-          where: { branchId_variantId: { branchId: item.branchId, variantId: item.variantId } },
-          create: {
-            branchId: item.branchId,
-            productId: item.productId,
-            variantId: item.variantId,
-            sellingPrice,
-            salePrice,
-            isVisible,
-            isAvailable,
-          },
-          update: { sellingPrice, salePrice, isVisible, isAvailable },
-        });
-        await this.prisma.inventory.upsert({
-          where: { branchId_variantId: { branchId: item.branchId, variantId: item.variantId } },
-          create: { branchId: item.branchId, productId: item.productId, variantId: item.variantId },
-          update: {},
-        });
-        return existing
-          ? {
+          if (action === 'CHANGE_PRICE' && typeof payload.sellingPrice === 'number') {
+            sellingPrice = payload.sellingPrice;
+          }
+          if (action === 'SET_SALE_PRICE') {
+            salePrice = typeof payload.salePrice === 'number' ? payload.salePrice : null;
+          }
+          if (action === 'PERCENTAGE_ADJUSTMENT' && typeof payload.percentBps === 'number') {
+            sellingPrice = Math.max(
+              0,
+              Math.round((sellingPrice * (10000 + payload.percentBps)) / 10000),
+            );
+          }
+          if (action === 'PUBLISH') isVisible = true;
+          if (action === 'HIDE') isVisible = false;
+          if (action === 'CHANGE_AVAILABILITY' && typeof payload.isAvailable === 'boolean') {
+            isAvailable = payload.isAvailable;
+          }
+
+          await this.prisma.branchProduct.upsert({
+            where: { branchId_variantId: { branchId: item.branchId, variantId: variant.id } },
+            create: {
+              branchId: item.branchId,
+              productId: item.productId,
+              variantId: variant.id,
+              sellingPrice,
+              salePrice,
+              isVisible,
+              isAvailable,
+            },
+            update: { sellingPrice, salePrice, isVisible, isAvailable },
+          });
+          await this.prisma.inventory.upsert({
+            where: { branchId_variantId: { branchId: item.branchId, variantId: variant.id } },
+            create: {
+              branchId: item.branchId,
+              productId: item.productId,
+              variantId: variant.id,
+            },
+            update: {},
+          });
+          if (existing) {
+            snapshots.push({
+              variantId: variant.id,
               sellingPrice: existing.sellingPrice,
               salePrice: existing.salePrice,
               isVisible: existing.isVisible,
               isAvailable: existing.isAvailable,
-            }
-          : null;
+            });
+          }
+        }
+        return snapshots.length ? { variants: snapshots } : null;
       }
       case 'ARCHIVE': {
         const product = await this.prisma.product.update({
@@ -372,6 +417,15 @@ export class BulkOperationsService implements OnModuleInit, OnModuleDestroy {
           await this.prisma.promotionProduct.deleteMany({
             where: { promotionId, productId: item.productId },
           });
+          // Drop branch link only when no products remain on that promotion for this branch scope.
+          const remaining = await this.prisma.promotionProduct.count({
+            where: { promotionId },
+          });
+          if (remaining === 0) {
+            await this.prisma.promotionBranch.deleteMany({
+              where: { promotionId, branchId: item.branchId },
+            });
+          }
         }
         return null;
       }

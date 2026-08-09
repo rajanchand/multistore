@@ -10,6 +10,7 @@ interface ProductDetail {
   id: string;
   name: string;
   sku: string;
+  barcode?: string | null;
   slug: string;
   brand?: string | null;
   shortDescription?: string | null;
@@ -18,6 +19,7 @@ interface ProductDetail {
   variants: Array<{
     id: string;
     sku: string;
+    barcode?: string | null;
     name: string;
     defaultPrice: number;
   }>;
@@ -55,11 +57,16 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
           / {product.sku}
         </p>
         <h1 className="mt-1 text-2xl font-semibold">{product.name}</h1>
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <Badge variant={product.status === 'ACTIVE' ? 'success' : 'secondary'}>
             {product.status}
           </Badge>
           {product.brand && <Badge variant="outline">{product.brand}</Badge>}
+          {product.barcode && (
+            <Badge variant="outline" className="font-mono">
+              Barcode {product.barcode}
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -83,7 +90,13 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
             {product.variants.map((v) => (
               <div key={v.id} className="flex justify-between border-b py-2 last:border-0">
                 <span>
-                  {v.name} <span className="font-mono text-xs text-muted-foreground">{v.sku}</span>
+                  {v.name}{' '}
+                  <span className="font-mono text-xs text-muted-foreground">{v.sku}</span>
+                  {(v.barcode ?? product.barcode) && (
+                    <span className="ml-2 font-mono text-xs text-muted-foreground">
+                      · {v.barcode ?? product.barcode}
+                    </span>
+                  )}
                 </span>
                 <span>{formatMoney(v.defaultPrice)}</span>
               </div>
@@ -136,6 +149,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
             id: product.id,
             name: product.name,
             sku: product.sku,
+            barcode: product.barcode ?? product.variants[0]?.barcode ?? '',
             slug: product.slug,
             brand: product.brand ?? '',
             shortDescription: product.shortDescription ?? '',

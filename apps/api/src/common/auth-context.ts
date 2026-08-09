@@ -4,6 +4,7 @@ import type { Permission } from '@repo/types';
 export interface AuthenticatedUser {
   id: string;
   email: string;
+  username: string;
   firstName: string;
   lastName: string;
   isGlobal: boolean;

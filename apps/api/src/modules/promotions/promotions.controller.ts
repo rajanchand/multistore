@@ -77,7 +77,10 @@ export class PromotionsController {
 
   @Get('coupons')
   @RequirePermissions('promotion.manage')
-  listCoupons(@Query(new ZodValidationPipe(paginationSchema)) query: z.infer<typeof paginationSchema>) {
-    return this.promotions.listCoupons(query);
+  listCoupons(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query(new ZodValidationPipe(paginationSchema)) query: z.infer<typeof paginationSchema>,
+  ) {
+    return this.promotions.listCoupons(user, query);
   }
 }

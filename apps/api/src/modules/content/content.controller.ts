@@ -172,8 +172,14 @@ export class ContentController {
   }
 
   @Get('plugins')
-  listPlugins(@Query('includeDisabled') includeDisabled?: string) {
-    return this.settings.listPlugins(includeDisabled !== 'false');
+  listPlugins(
+    @Query('includeDisabled') includeDisabled?: string,
+    @Query('category') category?: string,
+  ) {
+    return this.settings.listPlugins(
+      includeDisabled !== 'false',
+      category?.trim() || undefined,
+    );
   }
 
   @Patch('plugins/:id')

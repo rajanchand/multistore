@@ -38,14 +38,14 @@ export class CategoriesController {
 
   @Get()
   @RequirePermissions('category.read')
-  list(@Query('includeHidden') includeHidden?: string) {
-    return this.catalogue.listCategories(includeHidden !== 'false');
+  list(@CurrentUser() user: AuthenticatedUser, @Query('includeHidden') includeHidden?: string) {
+    return this.catalogue.listCategories(user, includeHidden !== 'false');
   }
 
   @Get(':id')
   @RequirePermissions('category.read')
-  get(@Param('id', ParseUUIDPipe) id: string) {
-    return this.catalogue.getCategory(id);
+  get(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.catalogue.getCategory(user, id);
   }
 
   @Post()

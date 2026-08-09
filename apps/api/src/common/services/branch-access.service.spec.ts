@@ -6,6 +6,7 @@ function user(partial: Partial<AuthenticatedUser> & Pick<AuthenticatedUser, 'isG
   return {
     id: 'u1',
     email: 'a@b.c',
+    username: 'a',
     firstName: 'A',
     lastName: 'B',
     mfaEnabled: false,
@@ -40,5 +41,24 @@ describe('BranchAccessService', () => {
     const u = user({ isGlobal: false, branchIds: new Set(['gla', 'pai']) });
     expect(service.resolveScope(u, ['gla'])).toEqual(['gla']);
     expect(() => service.resolveScope(u, ['edi'])).toThrow();
+  });
+
+  it('blocks branch users from managing org-wide records', () => {
+    const u = user({ isGlobal: false, branchIds: new Set(['edi']) });
+    expect(() =>
+      service.assertCanManageBranchScoped(u, { allBranches: true, branches: [] }),
+    ).toThrow();
+    expect(() =>
+      service.assertCanManageBranchScoped(u, {
+        allBranches: false,
+        branches: [{ branchId: 'gla' }],
+      }),
+    ).toThrow();
+    expect(() =>
+      service.assertCanManageBranchScoped(u, {
+        allBranches: false,
+        branches: [{ branchId: 'edi' }],
+      }),
+    ).not.toThrow();
   });
 });

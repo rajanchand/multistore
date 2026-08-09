@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nest
 import { Queue, Worker } from 'bullmq';
 import type Redis from 'ioredis';
 import { randomUUID } from 'crypto';
-import type { SendSmsInput } from '@repo/validation';
+import type { GenerateSmsInput, SendSmsInput } from '@repo/validation';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { BranchAccessService } from '../../common/services/branch-access.service';
@@ -10,6 +10,8 @@ import { REDIS } from '../../redis/redis.module';
 import { Errors } from '../../common/errors';
 import type { AuthenticatedUser, RequestContext } from '../../common/auth-context';
 import { createSmsProviderFromEnv, type SmsProvider } from './sms-provider';
+import { generateSmsWithGemini, type SmsGenerateContext } from './gemini-sms.provider';
+import { DEFAULT_STORE_DETAILS, SETTING_KEYS } from '../content/settings.defaults';
 
 export const SMS_QUEUE = 'sms';
 
@@ -74,6 +76,111 @@ export class SmsService implements OnModuleInit, OnModuleDestroy {
     }));
   }
 
+  async generate(user: AuthenticatedUser, input: GenerateSmsInput) {
+    if (input.branchId) this.branchAccess.assertCanAccess(user, input.branchId);
+
+    const [storeSetting, branch, campaign, promotion] = await Promise.all([
+      this.prisma.setting.findFirst({
+        where: { key: SETTING_KEYS.store, branchId: null },
+        select: { value: true },
+      }),
+      input.branchId
+        ? this.prisma.branch.findFirst({
+            where: { id: input.branchId, deletedAt: null },
+            select: { id: true, name: true, code: true },
+          })
+        : Promise.resolve(null),
+      input.campaignId
+        ? this.prisma.campaign.findFirst({
+            where: { id: input.campaignId, deletedAt: null },
+            select: { id: true, name: true, description: true, content: true, audience: true },
+          })
+        : Promise.resolve(null),
+      input.promotionId
+        ? this.prisma.promotion.findFirst({
+            where: { id: input.promotionId, deletedAt: null },
+            include: {
+              coupons: {
+                where: { isActive: true },
+                orderBy: { createdAt: 'asc' },
+                take: 1,
+              },
+            },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    if (input.campaignId && !campaign) throw Errors.notFound('Campaign');
+    if (input.promotionId && !promotion) throw Errors.notFound('Promotion');
+    if (input.branchId && !branch) throw Errors.notFound('Branch');
+
+    const storeValue = (storeSetting?.value ?? {}) as Record<string, unknown>;
+    const storeName =
+      typeof storeValue.storeName === 'string' && storeValue.storeName.trim()
+        ? storeValue.storeName.trim()
+        : DEFAULT_STORE_DETAILS.storeName;
+
+    const content = (campaign?.content ?? null) as { body?: string; subject?: string } | null;
+    const audience = (campaign?.audience ?? null) as { segment?: string } | null;
+    const segment = input.segment ?? audience?.segment;
+
+    const offerSummary = promotion ? this.formatOfferSummary(promotion) : undefined;
+
+    const genCtx: SmsGenerateContext = {
+      storeName,
+      mode: input.mode,
+      segment,
+      branchName: branch ? `${branch.name} (${branch.code})` : undefined,
+      campaignName: campaign?.name,
+      campaignDescription: campaign?.description ?? undefined,
+      campaignBodyHint: content?.body ?? content?.subject,
+      offerName: promotion?.name,
+      offerDescription: promotion?.description ?? undefined,
+      offerSummary,
+      couponCode: promotion?.coupons[0]?.code,
+      notes: input.notes,
+    };
+
+    const result = await generateSmsWithGemini(genCtx);
+    return {
+      body: result.body,
+      provider: result.provider,
+      model: result.model ?? null,
+      context: {
+        storeName,
+        mode: input.mode,
+        segment: segment ?? null,
+        branchId: branch?.id ?? null,
+        campaignId: campaign?.id ?? null,
+        promotionId: promotion?.id ?? null,
+        couponCode: promotion?.coupons[0]?.code ?? null,
+      },
+    };
+  }
+
+  private formatOfferSummary(promotion: {
+    type: string;
+    value: number;
+    buyQuantity: number | null;
+    getQuantity: number | null;
+    minimumSpend: number | null;
+  }): string {
+    switch (promotion.type) {
+      case 'PERCENTAGE':
+        return `${(promotion.value / 100).toFixed(promotion.value % 100 === 0 ? 0 : 1)}% off`;
+      case 'FIXED_AMOUNT':
+        return `£${(promotion.value / 100).toFixed(2)} off`;
+      case 'BOGO':
+        return 'Buy one get one';
+      case 'BUY_X_GET_Y':
+        return `Buy ${promotion.buyQuantity ?? 'X'} get ${promotion.getQuantity ?? 'Y'}`;
+      case 'FREE_DELIVERY':
+        return 'Free delivery';
+      default:
+        return promotion.type.replace(/_/g, ' ').toLowerCase();
+    }
+  }
+
   async send(user: AuthenticatedUser, input: SendSmsInput, ctx: RequestContext) {
     if (input.branchId) this.branchAccess.assertCanAccess(user, input.branchId);
 
@@ -125,15 +232,36 @@ export class SmsService implements OnModuleInit, OnModuleDestroy {
     return { batchId, queued: created.length, items: created };
   }
 
+  private async assertCustomerInScope(user: AuthenticatedUser, customerId: string): Promise<void> {
+    if (user.isGlobal) return;
+    const accessible = await this.prisma.customer.findFirst({
+      where: {
+        id: customerId,
+        deletedAt: null,
+        OR: [
+          { preferredBranchId: { in: [...user.branchIds] } },
+          { orders: { some: { branchId: { in: [...user.branchIds] } } } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!accessible) throw Errors.branchAccessDenied();
+  }
+
   private async resolveRecipients(
     user: AuthenticatedUser,
     input: SendSmsInput,
   ): Promise<Array<{ phone: string; customerId?: string; branchId?: string }>> {
     if (input.toPhone) {
+      if (input.customerId) await this.assertCustomerInScope(user, input.customerId);
+      else if (!user.isGlobal) {
+        throw Errors.forbidden('Branch users must send SMS to customers within their branches.');
+      }
       return [{ phone: input.toPhone.replace(/\s+/g, ''), customerId: input.customerId }];
     }
 
     if (input.customerId) {
+      await this.assertCustomerInScope(user, input.customerId);
       const customer = await this.prisma.customer.findFirst({
         where: { id: input.customerId, deletedAt: null },
         select: { id: true, phone: true, preferredBranchId: true },

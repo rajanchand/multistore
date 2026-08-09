@@ -47,22 +47,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-indigo-50 to-slate-100 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-white to-sky-50 px-4">
       <Card className="w-full max-w-md border-slate-200 shadow-lg">
         <CardHeader>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">MultiBranch</p>
           <CardTitle className="text-2xl">HQ Admin</CardTitle>
-          <CardDescription>Sign in with your staff account.</CardDescription>
+          <CardDescription>Sign in with email or username.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="email">
-                Email
+                Email or username
               </label>
               <Input
                 id="email"
-                type="email"
+                type="text"
                 autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -107,7 +107,7 @@ export default function LoginPage() {
             </Button>
           </form>
           <p className="mt-4 text-xs text-muted-foreground">
-            Dev: superadmin@dev.local / DevPassword123!
+            Dev: superadmin / admin@dev.local / DevPassword123!
           </p>
         </CardContent>
       </Card>

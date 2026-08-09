@@ -38,14 +38,14 @@ export class BrandsController {
 
   @Get()
   @RequirePermissions('brand.read')
-  list(@Query('includeHidden') includeHidden?: string) {
-    return this.catalogue.listBrands(includeHidden !== 'false');
+  list(@CurrentUser() user: AuthenticatedUser, @Query('includeHidden') includeHidden?: string) {
+    return this.catalogue.listBrands(user, includeHidden !== 'false');
   }
 
   @Get(':id')
   @RequirePermissions('brand.read')
-  get(@Param('id', ParseUUIDPipe) id: string) {
-    return this.catalogue.getBrand(id);
+  get(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.catalogue.getBrand(user, id);
   }
 
   @Post()

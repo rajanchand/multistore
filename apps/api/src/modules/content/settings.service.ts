@@ -127,9 +127,13 @@ export class SettingsService {
     };
   }
 
-  listPlugins(includeDisabled = true) {
+  listPlugins(includeDisabled = true, category?: string) {
     return this.prisma.plugin.findMany({
-      where: { deletedAt: null, ...(includeDisabled ? {} : { isEnabled: true }) },
+      where: {
+        deletedAt: null,
+        ...(includeDisabled ? {} : { isEnabled: true }),
+        ...(category ? { category } : {}),
+      },
       orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
     });
   }

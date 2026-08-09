@@ -4,6 +4,7 @@ import { api } from './api';
 export interface AdminMe {
   id: string;
   email: string;
+  username?: string;
   firstName: string;
   lastName: string;
   isGlobal: boolean;

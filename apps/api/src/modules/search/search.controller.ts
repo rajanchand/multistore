@@ -34,11 +34,23 @@ export class SearchController {
     const q = query.q;
     const branchFilter = user.isGlobal ? {} : { id: { in: [...user.branchIds] } };
     const orderBranchFilter = this.branchAccess.branchFilter(user);
+    const productBranchScope = user.isGlobal
+      ? {}
+      : { branchProducts: { some: { branchId: { in: [...user.branchIds] } } } };
+    const customerBranchScope = user.isGlobal
+      ? {}
+      : {
+          OR: [
+            { preferredBranchId: { in: [...user.branchIds] } },
+            { orders: { some: { branchId: { in: [...user.branchIds] } } } },
+          ],
+        };
 
     const [products, orders, customers, branches] = await Promise.all([
       this.prisma.product.findMany({
         where: {
           deletedAt: null,
+          ...productBranchScope,
           OR: [
             { name: { contains: q, mode: 'insensitive' } },
             { sku: { contains: q, mode: 'insensitive' } },
@@ -63,6 +75,7 @@ export class SearchController {
         ? this.prisma.customer.findMany({
             where: {
               deletedAt: null,
+              ...customerBranchScope,
               OR: [
                 { email: { contains: q, mode: 'insensitive' } },
                 { firstName: { contains: q, mode: 'insensitive' } },

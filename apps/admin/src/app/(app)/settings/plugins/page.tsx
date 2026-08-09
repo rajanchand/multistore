@@ -14,7 +14,7 @@ type Plugin = {
   config?: Record<string, unknown> | null;
 };
 
-const CATEGORY_ORDER = ['chat', 'social', 'delivery', 'other'];
+const CATEGORY_ORDER = ['chat', 'social', 'delivery', 'marketplace', 'other'];
 
 export default async function SettingsPluginsPage() {
   const token = cookies().get('admin_session')?.value;

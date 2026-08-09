@@ -56,17 +56,20 @@ export class CustomerAuthService {
     password: string,
     ctx: RequestContext,
   ): Promise<{ token: string; customer: PublicCustomer }> {
-    const customer = await this.prisma.customer.findFirst({ where: { email, deletedAt: null } });
+    const identifier = email.trim().toLowerCase();
+    const customer = await this.prisma.customer.findFirst({
+      where: { email: identifier, deletedAt: null },
+    });
     const dummyHash =
       '$argon2id$v=19$m=19456,t=2,p=1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
     const passwordOk = await verifyPassword(customer?.passwordHash ?? dummyHash, password);
 
     if (!customer || !customer.isActive) {
-      await this.recordLogin(email, false, 'unknown_or_inactive', ctx, customer?.id);
+      await this.recordLogin(identifier, false, 'unknown_or_inactive', ctx, customer?.id);
       throw Errors.invalidCredentials();
     }
     if (customer.lockedUntil && customer.lockedUntil > new Date()) {
-      await this.recordLogin(email, false, 'locked', ctx, customer.id);
+      await this.recordLogin(identifier, false, 'locked', ctx, customer.id);
       throw Errors.accountLocked();
     }
     if (!passwordOk) {
@@ -81,7 +84,7 @@ export class CustomerAuthService {
               : null,
         },
       });
-      await this.recordLogin(email, false, 'bad_password', ctx, customer.id);
+      await this.recordLogin(identifier, false, 'bad_password', ctx, customer.id);
       throw Errors.invalidCredentials();
     }
 
@@ -95,7 +98,7 @@ export class CustomerAuthService {
       ip: ctx.ip,
       userAgent: ctx.userAgent,
     });
-    await this.recordLogin(email, true, null, ctx, customer.id);
+    await this.recordLogin(identifier, true, null, ctx, customer.id);
     return { token, customer: publicCustomer(customer) };
   }
 

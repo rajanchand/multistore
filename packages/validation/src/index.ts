@@ -5,6 +5,7 @@ export * from './product';
 export * from './inventory';
 export * from './cart';
 export * from './order';
+export * from './pos';
 export * from './marketing';
 export * from './admin';
 export * from './content';

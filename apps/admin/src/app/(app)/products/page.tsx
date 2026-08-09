@@ -10,6 +10,7 @@ interface ProductList {
     id: string;
     name: string;
     sku: string;
+    barcode?: string | null;
     status: string;
     totalStock: number;
     branchCount: number;
@@ -64,6 +65,7 @@ export default async function ProductsPage() {
                 <th className="pb-2 font-medium">Image</th>
                 <th className="pb-2 font-medium">Product</th>
                 <th className="pb-2 font-medium">SKU</th>
+                <th className="pb-2 font-medium">Barcode</th>
                 <th className="pb-2 font-medium">Category</th>
                 <th className="pb-2 font-medium">Branches</th>
                 <th className="pb-2 font-medium">Price</th>
@@ -91,6 +93,7 @@ export default async function ProductsPage() {
                   </td>
                   <td className="py-3 font-medium">{p.name}</td>
                   <td className="py-3 font-mono text-xs">{p.sku}</td>
+                  <td className="py-3 font-mono text-xs">{p.barcode ?? '—'}</td>
                   <td className="py-3">{p.categories[0]?.category.name ?? '—'}</td>
                   <td className="py-3">{p.branchCount}</td>
                   <td className="py-3">

@@ -2,7 +2,12 @@ import { Body, Controller, Get, Post, Query, Req, UseGuards } from '@nestjs/comm
 import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { z } from 'zod';
-import { sendSmsSchema, type SendSmsInput } from '@repo/validation';
+import {
+  generateSmsSchema,
+  sendSmsSchema,
+  type GenerateSmsInput,
+  type SendSmsInput,
+} from '@repo/validation';
 import { SmsService } from './sms.service';
 import { AdminAuthGuard } from '../../common/guards/admin-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -33,6 +38,14 @@ export class SmsController {
     @Query(new ZodValidationPipe(listQuerySchema)) query: z.infer<typeof listQuerySchema>,
   ) {
     return this.sms.list(user, query.page, query.pageSize);
+  }
+
+  @Post('generate')
+  generate(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(generateSmsSchema)) body: GenerateSmsInput,
+  ) {
+    return this.sms.generate(user, body);
   }
 
   @Post('send')

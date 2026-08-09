@@ -28,6 +28,7 @@ import { ContentModule } from './modules/content/content.module';
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import { SmsModule } from './modules/sms/sms.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { PosModule } from './modules/pos/pos.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     CampaignsModule,
     SmsModule,
     ReportsModule,
+    PosModule,
   ],
 })
 export class AppModule implements NestModule {

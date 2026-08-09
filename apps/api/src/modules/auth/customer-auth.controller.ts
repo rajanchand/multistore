@@ -3,12 +3,12 @@ import { ApiTags } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import {
+  customerLoginSchema,
   forgotPasswordSchema,
-  loginSchema,
   registerSchema,
   resetPasswordSchema,
+  type CustomerLoginInput,
   type ForgotPasswordInput,
-  type LoginInput,
   type RegisterInput,
   type ResetPasswordInput,
 } from '@repo/validation';
@@ -54,7 +54,7 @@ export class CustomerAuthController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   async login(
-    @Body(new ZodValidationPipe(loginSchema)) body: LoginInput,
+    @Body(new ZodValidationPipe(customerLoginSchema)) body: CustomerLoginInput,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {

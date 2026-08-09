@@ -46,4 +46,37 @@ export class BranchAccessService {
     }
     return user.isGlobal ? undefined : [...user.branchIds];
   }
+
+  /**
+   * Prisma `where` for entities with `allBranches` + M2M `branches`.
+   * Branch users see org-wide rows plus those linked to their branches.
+   */
+  allBranchesOrAssignedFilter(user: AuthenticatedUser):
+    | Record<string, never>
+    | { OR: Array<{ allBranches: true } | { branches: { some: { branchId: { in: string[] } } } }> } {
+    if (user.isGlobal) return {};
+    const ids = [...user.branchIds];
+    return {
+      OR: [{ allBranches: true }, { branches: { some: { branchId: { in: ids } } } }],
+    };
+  }
+
+  /**
+   * Throws unless the user may manage an entity scoped by allBranches / branch links.
+   * Org-wide (`allBranches`) rows are HQ-only for mutation; branch users need overlap.
+   */
+  assertCanManageBranchScoped(
+    user: AuthenticatedUser,
+    entity: { allBranches?: boolean; branches: Array<{ branchId: string }> },
+  ): void {
+    if (user.isGlobal) return;
+    if (entity.allBranches) {
+      throw Errors.forbidden('Only HQ users can manage organisation-wide records.');
+    }
+    if (entity.branches.length === 0) {
+      throw Errors.forbidden('Only HQ users can manage organisation-wide records.');
+    }
+    const overlap = entity.branches.some((b) => user.branchIds.has(b.branchId));
+    if (!overlap) throw Errors.branchAccessDenied();
+  }
 }

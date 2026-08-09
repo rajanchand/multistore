@@ -25,18 +25,25 @@ export class CatalogueService {
 
   // --- Categories ---
 
-  async listCategories(includeHidden = true) {
+  async listCategories(user: AuthenticatedUser, includeHidden = true) {
     return this.prisma.category.findMany({
-      where: { deletedAt: null, ...(includeHidden ? {} : { isVisible: true }) },
+      where: {
+        deletedAt: null,
+        ...(includeHidden ? {} : { isVisible: true }),
+        ...this.branchAccess.allBranchesOrAssignedFilter(user),
+      },
       include: {
         _count: { select: { products: true } },
-        branches: { include: { branch: { select: { id: true, name: true, code: true } } } },
+        branches: {
+          where: user.isGlobal ? {} : { branchId: { in: [...user.branchIds] } },
+          include: { branch: { select: { id: true, name: true, code: true } } },
+        },
       },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
   }
 
-  async getCategory(id: string) {
+  async getCategory(user: AuthenticatedUser, id: string) {
     const category = await this.prisma.category.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -45,13 +52,25 @@ export class CatalogueService {
       },
     });
     if (!category) throw Errors.notFound('Category');
-    return category;
+    this.assertCanViewCatalogueEntity(user, category);
+    return {
+      ...category,
+      branches: user.isGlobal
+        ? category.branches
+        : category.branches.filter((b) => user.branchIds.has(b.branchId)),
+    };
   }
 
   async createCategory(user: AuthenticatedUser, input: CreateCategoryInput, ctx: RequestContext) {
     const { branchIds, ...data } = input;
+    if (data.allBranches && !user.isGlobal) {
+      throw Errors.forbidden('Only HQ users can create categories for all branches.');
+    }
     if (!data.allBranches && branchIds.length > 0) {
       this.branchAccess.assertCanAccessAll(user, branchIds);
+    }
+    if (!data.allBranches && branchIds.length === 0 && !user.isGlobal) {
+      throw Errors.badRequest('BRANCHES_REQUIRED', 'Select at least one branch for this category.');
     }
     const conflict = await this.prisma.category.findUnique({ where: { slug: data.slug } });
     if (conflict) throw Errors.conflict('CATEGORY_EXISTS', 'A category with this slug already exists.');
@@ -86,10 +105,17 @@ export class CatalogueService {
     input: UpdateCategoryInput,
     ctx: RequestContext,
   ) {
-    const existing = await this.prisma.category.findFirst({ where: { id, deletedAt: null } });
+    const existing = await this.prisma.category.findFirst({
+      where: { id, deletedAt: null },
+      include: { branches: true },
+    });
     if (!existing) throw Errors.notFound('Category');
+    this.branchAccess.assertCanManageBranchScoped(user, existing);
 
     const { branchIds, ...data } = input;
+    if (data.allBranches === true && !user.isGlobal) {
+      throw Errors.forbidden('Only HQ users can mark categories as all-branches.');
+    }
     if (branchIds) this.branchAccess.assertCanAccessAll(user, branchIds);
 
     const category = await this.prisma.$transaction(async (tx) => {
@@ -126,8 +152,12 @@ export class CatalogueService {
   }
 
   async setCategoryVisibility(user: AuthenticatedUser, id: string, isVisible: boolean, ctx: RequestContext) {
-    const existing = await this.prisma.category.findFirst({ where: { id, deletedAt: null } });
+    const existing = await this.prisma.category.findFirst({
+      where: { id, deletedAt: null },
+      include: { branches: true },
+    });
     if (!existing) throw Errors.notFound('Category');
+    this.branchAccess.assertCanManageBranchScoped(user, existing);
     const category = await this.prisma.category.update({ where: { id }, data: { isVisible } });
     await this.audit.log({
       actorUserId: user.id,
@@ -140,8 +170,12 @@ export class CatalogueService {
   }
 
   async archiveCategory(user: AuthenticatedUser, id: string, ctx: RequestContext) {
-    const existing = await this.prisma.category.findFirst({ where: { id, deletedAt: null } });
+    const existing = await this.prisma.category.findFirst({
+      where: { id, deletedAt: null },
+      include: { branches: true },
+    });
     if (!existing) throw Errors.notFound('Category');
+    this.branchAccess.assertCanManageBranchScoped(user, existing);
     const category = await this.prisma.category.update({
       where: { id },
       data: { deletedAt: new Date(), isVisible: false },
@@ -158,18 +192,25 @@ export class CatalogueService {
 
   // --- Brands ---
 
-  async listBrands(includeHidden = true) {
+  async listBrands(user: AuthenticatedUser, includeHidden = true) {
     return this.prisma.brand.findMany({
-      where: { deletedAt: null, ...(includeHidden ? {} : { isVisible: true }) },
+      where: {
+        deletedAt: null,
+        ...(includeHidden ? {} : { isVisible: true }),
+        ...this.branchAccess.allBranchesOrAssignedFilter(user),
+      },
       include: {
         _count: { select: { products: true } },
-        branches: { include: { branch: { select: { id: true, name: true, code: true } } } },
+        branches: {
+          where: user.isGlobal ? {} : { branchId: { in: [...user.branchIds] } },
+          include: { branch: { select: { id: true, name: true, code: true } } },
+        },
       },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
   }
 
-  async getBrand(id: string) {
+  async getBrand(user: AuthenticatedUser, id: string) {
     const brand = await this.prisma.brand.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -178,13 +219,25 @@ export class CatalogueService {
       },
     });
     if (!brand) throw Errors.notFound('Brand');
-    return brand;
+    this.assertCanViewCatalogueEntity(user, brand);
+    return {
+      ...brand,
+      branches: user.isGlobal
+        ? brand.branches
+        : brand.branches.filter((b) => user.branchIds.has(b.branchId)),
+    };
   }
 
   async createBrand(user: AuthenticatedUser, input: CreateBrandInput, ctx: RequestContext) {
     const { branchIds, ...data } = input;
+    if (data.allBranches && !user.isGlobal) {
+      throw Errors.forbidden('Only HQ users can create brands for all branches.');
+    }
     if (!data.allBranches && branchIds.length > 0) {
       this.branchAccess.assertCanAccessAll(user, branchIds);
+    }
+    if (!data.allBranches && branchIds.length === 0 && !user.isGlobal) {
+      throw Errors.badRequest('BRANCHES_REQUIRED', 'Select at least one branch for this brand.');
     }
     const conflict = await this.prisma.brand.findUnique({ where: { slug: data.slug } });
     if (conflict) throw Errors.conflict('BRAND_EXISTS', 'A brand with this slug already exists.');
@@ -214,10 +267,17 @@ export class CatalogueService {
   }
 
   async updateBrand(user: AuthenticatedUser, id: string, input: UpdateBrandInput, ctx: RequestContext) {
-    const existing = await this.prisma.brand.findFirst({ where: { id, deletedAt: null } });
+    const existing = await this.prisma.brand.findFirst({
+      where: { id, deletedAt: null },
+      include: { branches: true },
+    });
     if (!existing) throw Errors.notFound('Brand');
+    this.branchAccess.assertCanManageBranchScoped(user, existing);
 
     const { branchIds, ...data } = input;
+    if (data.allBranches === true && !user.isGlobal) {
+      throw Errors.forbidden('Only HQ users can mark brands as all-branches.');
+    }
     if (branchIds) this.branchAccess.assertCanAccessAll(user, branchIds);
 
     const brand = await this.prisma.$transaction(async (tx) => {
@@ -259,8 +319,12 @@ export class CatalogueService {
   }
 
   async setBrandVisibility(user: AuthenticatedUser, id: string, isVisible: boolean, ctx: RequestContext) {
-    const existing = await this.prisma.brand.findFirst({ where: { id, deletedAt: null } });
+    const existing = await this.prisma.brand.findFirst({
+      where: { id, deletedAt: null },
+      include: { branches: true },
+    });
     if (!existing) throw Errors.notFound('Brand');
+    this.branchAccess.assertCanManageBranchScoped(user, existing);
     const brand = await this.prisma.brand.update({ where: { id }, data: { isVisible } });
     await this.audit.log({
       actorUserId: user.id,
@@ -273,8 +337,12 @@ export class CatalogueService {
   }
 
   async archiveBrand(user: AuthenticatedUser, id: string, ctx: RequestContext) {
-    const existing = await this.prisma.brand.findFirst({ where: { id, deletedAt: null } });
+    const existing = await this.prisma.brand.findFirst({
+      where: { id, deletedAt: null },
+      include: { branches: true },
+    });
     if (!existing) throw Errors.notFound('Brand');
+    this.branchAccess.assertCanManageBranchScoped(user, existing);
     const brand = await this.prisma.brand.update({
       where: { id },
       data: { deletedAt: new Date(), isVisible: false },
@@ -287,6 +355,15 @@ export class CatalogueService {
       requestId: ctx.requestId,
     });
     return brand;
+  }
+
+  private assertCanViewCatalogueEntity(
+    user: AuthenticatedUser,
+    entity: { allBranches: boolean; branches: Array<{ branchId: string }> },
+  ): void {
+    if (user.isGlobal || entity.allBranches) return;
+    const overlap = entity.branches.some((b) => user.branchIds.has(b.branchId));
+    if (!overlap) throw Errors.notFound('Record');
   }
 
   /** Ensure brands exist for free-text product.brand values (seed / migration helper). */

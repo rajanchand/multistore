@@ -25,7 +25,12 @@ const SECTIONS = [
   {
     href: '/settings/plugins',
     title: '5. Plugins & partners',
-    description: 'WhatsApp chat, Facebook, and UK delivery partners (DPD, Evri, Royal Mail, Stuart…).',
+    description: 'WhatsApp chat, Facebook, and UK parcel partners (DPD, Evri, Royal Mail, Stuart…).',
+  },
+  {
+    href: '/apps',
+    title: '6. Apps (delivery marketplaces)',
+    description: 'Uber Eats, Uber Direct, Deliveroo, Just Eat, DoorDash Drive, Getir — easy API setup.',
   },
   {
     href: '/settings/about',

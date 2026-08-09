@@ -1,5 +1,43 @@
 @import '@repo/ui/globals.css';
 
+/*
+ * Admin light theme overrides.
+ * Keeps the shared design tokens but forces a clean white shell (not dark-default)
+ * and replaces the purple accent with a slate/teal commerce look.
+ */
+:root {
+  --background: 210 20% 98%;
+  --foreground: 222 28% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 28% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 28% 12%;
+  --primary: 199 78% 32%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 16% 95%;
+  --secondary-foreground: 222 22% 18%;
+  --muted: 210 16% 95%;
+  --muted-foreground: 215 12% 42%;
+  --accent: 199 40% 94%;
+  --accent-foreground: 199 70% 22%;
+  --destructive: 0 72% 48%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 18% 88%;
+  --input: 214 18% 88%;
+  --ring: 199 78% 32%;
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 222 28% 12%;
+  --sidebar-accent: 210 16% 95%;
+  --sidebar-accent-foreground: 222 28% 12%;
+  --sidebar-border: 214 18% 88%;
+}
+
+html {
+  color-scheme: light;
+}
+
 body {
   font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
 }

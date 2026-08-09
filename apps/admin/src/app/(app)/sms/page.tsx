@@ -3,6 +3,37 @@ import { Badge, Card, CardContent, CardHeader, CardTitle } from '@repo/ui';
 import { api, ApiError } from '@/lib/api';
 import { SmsComposeForm } from '@/components/sms-compose-form';
 
+type Branch = { id: string; name: string; code: string };
+type Campaign = {
+  id: string;
+  name: string;
+  status: string;
+  audience?: { segment?: string } | null;
+  branches?: Array<{ branch: Branch }>;
+};
+type Offer = {
+  id: string;
+  name: string;
+  type: string;
+  value: number;
+  status: string;
+  description?: string | null;
+  coupons?: Array<{ code: string; isActive: boolean }>;
+};
+
+async function softFetch<T>(path: string, token: string | undefined, fallback: T): Promise<T> {
+  if (!token) return fallback;
+  try {
+    return await api<T>(path, {
+      token,
+      cache: 'no-store',
+      headers: { Cookie: `admin_session=${token}` },
+    });
+  } catch {
+    return fallback;
+  }
+}
+
 export default async function SmsPage() {
   const token = cookies().get('admin_session')?.value;
 
@@ -17,24 +48,30 @@ export default async function SmsPage() {
     branch?: { code: string } | null;
     campaign?: { name: string } | null;
   }> = [];
-  let branches: Array<{ id: string; name: string; code: string }> = [];
+  let branches: Branch[] = [];
+  let campaigns: Campaign[] = [];
+  let offers: Offer[] = [];
   let error: string | null = null;
 
   try {
-    const [sms, branchList] = await Promise.all([
+    const [sms, branchList, campaignList, promoPage] = await Promise.all([
       api<{ items: typeof messages }>('/sms?pageSize=50', {
         token,
         cache: 'no-store',
         headers: token ? { Cookie: `admin_session=${token}` } : {},
       }),
-      api<typeof branches>('/branches', {
+      api<Branch[]>('/branches', {
         token,
         cache: 'no-store',
         headers: token ? { Cookie: `admin_session=${token}` } : {},
       }),
+      softFetch<Campaign[]>('/campaigns', token, []),
+      softFetch<{ items: Offer[] }>('/promotions?pageSize=100&status=ACTIVE', token, { items: [] }),
     ]);
     messages = sms.items;
     branches = branchList.filter((b) => b.code !== 'HQ');
+    campaigns = campaignList;
+    offers = promoPage.items;
   } catch (e) {
     error = e instanceof ApiError ? e.message : 'Failed to load SMS data';
   }
@@ -44,7 +81,7 @@ export default async function SmsPage() {
       <div>
         <h1 className="text-2xl font-semibold">SMS</h1>
         <p className="text-sm text-muted-foreground">
-          Send individual or bulk SMS. Uses LogSmsProvider in development (check API logs).
+          Pick mode, campaign, segment, branch, and offer — Gemini writes the message, then you send.
         </p>
       </div>
 
@@ -54,7 +91,7 @@ export default async function SmsPage() {
         </div>
       )}
 
-      <SmsComposeForm branches={branches} />
+      <SmsComposeForm branches={branches} campaigns={campaigns} offers={offers} />
 
       <Card>
         <CardHeader>

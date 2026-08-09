@@ -48,16 +48,31 @@ export const createCouponSchema = z.object({
 });
 export type CreateCouponInput = z.infer<typeof createCouponSchema>;
 
+const bannerImageSchema = z
+  .string()
+  .trim()
+  .max(2_000_000)
+  .refine(
+    (v) => !v || v.startsWith('data:image/') || /^https?:\/\/.+/i.test(v),
+    { message: 'Image must be an http(s) URL or data:image upload' },
+  )
+  .optional()
+  .nullable();
+
 export const bannerFieldsSchema = z.object({
   title: z.string().trim().min(1).max(150),
   type: z.enum(['HERO', 'MOBILE_HERO', 'CATEGORY', 'PROMOTION', 'POPUP', 'ANNOUNCEMENT']),
-  image: z.string().url().optional(),
-  mobileImage: z.string().url().optional(),
-  ctaLabel: z.string().trim().max(50).optional(),
+  image: bannerImageSchema,
+  mobileImage: bannerImageSchema,
+  ctaLabel: z.union([z.literal(''), z.string().trim().max(50)]).optional(),
   ctaUrl: z
-    .string()
-    .max(500)
-    .regex(/^\/(?!\/)/, 'CTA destination must be a relative path')
+    .union([
+      z.literal(''),
+      z
+        .string()
+        .max(500)
+        .regex(/^\/(?!\/)/, 'CTA destination must be a relative path'),
+    ])
     .optional(),
   startsAt: z.coerce.date(),
   endsAt: z.coerce.date().nullable().optional(),
@@ -65,23 +80,28 @@ export const bannerFieldsSchema = z.object({
   branchIds: z.array(uuidSchema).default([]),
   status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']).default('DRAFT'),
   priority: z.number().int().min(0).max(1000).default(100),
-  body: z.string().trim().max(2000).optional(),
+  body: z.union([z.literal(''), z.string().trim().max(2000)]).optional(),
 });
 
-export const createBannerSchema = bannerFieldsSchema.refine(
-  (v) => !v.endsAt || v.endsAt > v.startsAt,
-  {
+export const createBannerSchema = bannerFieldsSchema
+  .refine((v) => !v.endsAt || v.endsAt > v.startsAt, {
     message: 'endsAt must be after startsAt',
     path: ['endsAt'],
-  },
-);
+  })
+  .refine((v) => v.isGlobal || v.branchIds.length > 0, {
+    message: 'Select at least one branch, or enable all branches',
+    path: ['branchIds'],
+  });
 export type CreateBannerInput = z.infer<typeof createBannerSchema>;
 
-export const updateBannerSchema = bannerFieldsSchema.partial().refine(
-  (v) => !v.startsAt || !v.endsAt || v.endsAt > v.startsAt,
-  {
+export const updateBannerSchema = bannerFieldsSchema
+  .partial()
+  .refine((v) => !v.startsAt || !v.endsAt || v.endsAt > v.startsAt, {
     message: 'endsAt must be after startsAt',
     path: ['endsAt'],
-  },
-);
+  })
+  .refine((v) => v.isGlobal !== false || !v.branchIds || v.branchIds.length > 0, {
+    message: 'Select at least one branch, or enable all branches',
+    path: ['branchIds'],
+  });
 export type UpdateBannerInput = z.infer<typeof updateBannerSchema>;

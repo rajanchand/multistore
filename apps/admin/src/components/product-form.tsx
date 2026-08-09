@@ -51,6 +51,7 @@ export function ProductForm({
     id?: string;
     name?: string;
     sku?: string;
+    barcode?: string | null;
     slug?: string;
     brand?: string;
     shortDescription?: string;
@@ -63,10 +64,11 @@ export function ProductForm({
   const router = useRouter();
   const [name, setName] = useState(initial?.name ?? '');
   const [sku, setSku] = useState(initial?.sku ?? '');
+  const [barcode, setBarcode] = useState(initial?.barcode ?? '');
   const [slug, setSlug] = useState(initial?.slug ?? '');
   const [brand, setBrand] = useState(initial?.brand ?? '');
   const [shortDescription, setShortDescription] = useState(initial?.shortDescription ?? '');
-  const [status, setStatus] = useState(initial?.status ?? 'DRAFT');
+  const [status, setStatus] = useState(initial?.status ?? 'ACTIVE');
   const [images, setImages] = useState<string[]>(
     Array.isArray(initial?.images) ? initial.images : [],
   );
@@ -75,7 +77,10 @@ export function ProductForm({
   );
   const [discountPrice, setDiscountPrice] = useState('');
   const [discountPercent, setDiscountPercent] = useState('');
-  const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
+  const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>(
+    branches.length === 1 ? [branches[0]!.id] : [],
+  );
+  const [initialStock, setInitialStock] = useState('10');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -137,6 +142,8 @@ export function ProductForm({
       return;
     }
 
+    const barcodeValue = barcode.trim() === '' ? null : barcode.trim();
+
     let payload: Record<string, unknown>;
     if (mode === 'create') {
       const originalPence = tryParsePence(originalPrice);
@@ -161,9 +168,20 @@ export function ProductForm({
         }
       }
 
+      const stock = Number(initialStock);
+      if (
+        selectedBranchIds.length > 0 &&
+        (initialStock.trim() === '' || !Number.isFinite(stock) || stock < 0 || !Number.isInteger(stock))
+      ) {
+        setError('Enter a whole-number opening stock (0 or more) for the selected stores.');
+        setLoading(false);
+        return;
+      }
+
       payload = {
         name,
         sku,
+        barcode: barcodeValue,
         slug: slug || slugify(name),
         brand: brand || undefined,
         shortDescription: shortDescription || undefined,
@@ -171,9 +189,11 @@ export function ProductForm({
         images,
         salePrice: salePence,
         branchIds: selectedBranchIds,
+        ...(selectedBranchIds.length > 0 ? { initialStock: stock } : {}),
         variants: [
           {
             sku: `${sku}-DEFAULT`,
+            barcode: barcodeValue,
             name: 'Default',
             defaultPrice: originalPence,
             attributes: {},
@@ -185,6 +205,7 @@ export function ProductForm({
       payload = {
         name,
         sku,
+        barcode: barcodeValue,
         slug,
         brand: brand || undefined,
         shortDescription: shortDescription || undefined,
@@ -243,6 +264,20 @@ export function ProductForm({
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">SKU</span>
             <Input value={sku} onChange={(e) => setSku(e.target.value)} required />
+            <span className="text-xs text-muted-foreground">Used for POS lookup and inventory</span>
+          </label>
+          <label className="space-y-1.5 text-sm">
+            <span className="font-medium">Barcode</span>
+            <Input
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+              placeholder="e.g. 5060166690034"
+              inputMode="numeric"
+              autoComplete="off"
+            />
+            <span className="text-xs text-muted-foreground">
+              Scan or type GTIN — POS matches this barcode at the till
+            </span>
           </label>
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Slug</span>
@@ -313,8 +348,8 @@ export function ProductForm({
                 <fieldset className="sm:col-span-2 space-y-2">
                   <legend className="text-sm font-medium">Save to stores</legend>
                   <p className="text-xs text-muted-foreground">
-                    Select one or more branches to create branch pricing and inventory rows with
-                    these prices.
+                    Select branches to create pricing and stock. POS only finds products assigned to
+                    the till&apos;s branch.
                   </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {branches.map((b) => {
@@ -338,6 +373,21 @@ export function ProductForm({
                       );
                     })}
                   </div>
+                  {selectedBranchIds.length > 0 && (
+                    <label className="mt-2 block max-w-xs space-y-1.5 text-sm">
+                      <span className="font-medium">Opening stock (per store)</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={initialStock}
+                        onChange={(e) => setInitialStock(e.target.value)}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        Applied to each selected branch so the item can sell on POS immediately
+                      </span>
+                    </label>
+                  )}
                 </fieldset>
               )}
             </>

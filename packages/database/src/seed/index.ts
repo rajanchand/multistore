@@ -71,6 +71,7 @@ async function seedBranches() {
 
 interface DevAccount {
   email: string;
+  username: string;
   firstName: string;
   lastName: string;
   role: string;
@@ -79,15 +80,16 @@ interface DevAccount {
 }
 
 const DEV_ACCOUNTS: DevAccount[] = [
-  { email: 'superadmin@dev.local', firstName: 'Sam', lastName: 'Admin', role: 'SUPER_ADMIN', isGlobal: true, branchCodes: [] },
-  { email: 'manager.glasgow@dev.local', firstName: 'Gina', lastName: 'Glasgow', role: 'BRANCH_MANAGER', isGlobal: false, branchCodes: ['GLA'] },
-  { email: 'manager.edinburgh@dev.local', firstName: 'Ewan', lastName: 'Edinburgh', role: 'BRANCH_MANAGER', isGlobal: false, branchCodes: ['EDI'] },
-  { email: 'manager.paisley@dev.local', firstName: 'Paula', lastName: 'Paisley', role: 'BRANCH_MANAGER', isGlobal: false, branchCodes: ['PAI'] },
-  { email: 'manager.manchester@dev.local', firstName: 'Mark', lastName: 'Manchester', role: 'BRANCH_MANAGER', isGlobal: false, branchCodes: ['MAN'] },
-  { email: 'manager.london@dev.local', firstName: 'Lena', lastName: 'London', role: 'BRANCH_MANAGER', isGlobal: false, branchCodes: ['LON'] },
-  { email: 'inventory.glasgow@dev.local', firstName: 'Iain', lastName: 'Stock', role: 'INVENTORY_STAFF', isGlobal: false, branchCodes: ['GLA'] },
-  { email: 'marketing@dev.local', firstName: 'Mia', lastName: 'Marketing', role: 'MARKETING', isGlobal: true, branchCodes: [] },
-  { email: 'support@dev.local', firstName: 'Sue', lastName: 'Support', role: 'SUPPORT', isGlobal: true, branchCodes: [] },
+  { email: 'superadmin@dev.local', username: 'superadmin', firstName: 'Sam', lastName: 'Admin', role: 'SUPER_ADMIN', isGlobal: true, branchCodes: [] },
+  { email: 'admin@dev.local', username: 'admin', firstName: 'Alex', lastName: 'Admin', role: 'ADMIN', isGlobal: true, branchCodes: [] },
+  { email: 'manager.glasgow@dev.local', username: 'manager.gla', firstName: 'Gina', lastName: 'Glasgow', role: 'BRANCH_MANAGER', isGlobal: false, branchCodes: ['GLA'] },
+  { email: 'manager.edinburgh@dev.local', username: 'manager.edi', firstName: 'Ewan', lastName: 'Edinburgh', role: 'BRANCH_MANAGER', isGlobal: false, branchCodes: ['EDI'] },
+  { email: 'manager.paisley@dev.local', username: 'manager.pai', firstName: 'Paula', lastName: 'Paisley', role: 'BRANCH_MANAGER', isGlobal: false, branchCodes: ['PAI'] },
+  { email: 'manager.manchester@dev.local', username: 'manager.man', firstName: 'Mark', lastName: 'Manchester', role: 'BRANCH_MANAGER', isGlobal: false, branchCodes: ['MAN'] },
+  { email: 'manager.london@dev.local', username: 'manager.lon', firstName: 'Lena', lastName: 'London', role: 'BRANCH_MANAGER', isGlobal: false, branchCodes: ['LON'] },
+  { email: 'inventory.glasgow@dev.local', username: 'inventory.gla', firstName: 'Iain', lastName: 'Stock', role: 'INVENTORY_STAFF', isGlobal: false, branchCodes: ['GLA'] },
+  { email: 'marketing@dev.local', username: 'marketing', firstName: 'Mia', lastName: 'Marketing', role: 'MARKETING', isGlobal: true, branchCodes: [] },
+  { email: 'support@dev.local', username: 'support', firstName: 'Sue', lastName: 'Support', role: 'SUPPORT', isGlobal: true, branchCodes: [] },
 ];
 
 async function seedUsers() {
@@ -102,13 +104,14 @@ async function seedUsers() {
       where: { email: account.email },
       create: {
         email: account.email,
+        username: account.username,
         passwordHash,
         firstName: account.firstName,
         lastName: account.lastName,
         isGlobal: account.isGlobal,
         isActive: true,
       },
-      update: { isGlobal: account.isGlobal },
+      update: { isGlobal: account.isGlobal, username: account.username },
     });
     await prisma.userRole.upsert({
       where: { userId_roleId: { userId: user.id, roleId: roleByName.get(account.role)! } },
@@ -287,20 +290,22 @@ async function seedCustomers() {
       },
       update: {},
     });
-    const hasAddress = await prisma.address.findFirst({ where: { customerId: customer.id } });
-    if (!hasAddress) {
-      await prisma.address.create({
-        data: {
-          customerId: customer.id,
-          label: 'Home',
-          recipientName: `${c.firstName} ${c.lastName}`,
-          line1: c.address.line1,
-          city: c.address.city,
-          postcode: c.address.postcode,
-          country: 'GB',
-          isDefault: true,
-        },
-      });
+    if (c.address) {
+      const hasAddress = await prisma.address.findFirst({ where: { customerId: customer.id } });
+      if (!hasAddress) {
+        await prisma.address.create({
+          data: {
+            customerId: customer.id,
+            label: 'Home',
+            recipientName: `${c.firstName} ${c.lastName}`,
+            line1: c.address.line1,
+            city: c.address.city,
+            postcode: c.address.postcode,
+            country: 'GB',
+            isDefault: true,
+          },
+        });
+      }
     }
   }
   console.log(`Seeded ${CUSTOMERS.length} customers`);
@@ -848,6 +853,138 @@ async function seedStoreSettingsAndPlugins() {
         accountNumber: '',
         trackingBaseUrl: 'https://www.dhl.com/gb-en/home/tracking.html',
         notes: '',
+      },
+    },
+    {
+      code: 'uber_eats',
+      name: 'Uber Eats',
+      description: 'Connect your stores to Uber Eats for marketplace orders and menu sync.',
+      category: 'marketplace',
+      provider: 'uber_eats',
+      sortOrder: 20,
+      config: {
+        storeId: '',
+        merchantId: '',
+        sandbox: true,
+        webhookPath: '/api/v1/webhooks/uber-eats',
+        docsUrl: 'https://developer.uber.com/docs/eats',
+        envVars: ['UBER_EATS_CLIENT_ID', 'UBER_EATS_CLIENT_SECRET', 'UBER_EATS_WEBHOOK_SECRET'],
+        setupSteps: [
+          'Create an Uber Eats developer app and note Client ID / Secret',
+          'Set UBER_EATS_* environment variables and restart the API',
+          'Enter your Uber Eats store / merchant IDs below',
+          'Register the webhook URL in the Uber developer console',
+          'Enable this app and map branches to Uber store IDs',
+        ],
+      },
+    },
+    {
+      code: 'uber_direct',
+      name: 'Uber Direct',
+      description: 'On-demand courier delivery via Uber Direct for your own online orders.',
+      category: 'marketplace',
+      provider: 'uber',
+      sortOrder: 21,
+      config: {
+        customerId: '',
+        sandbox: true,
+        webhookPath: '/api/v1/webhooks/uber-direct',
+        docsUrl: 'https://developer.uber.com/docs/direct',
+        envVars: ['UBER_DIRECT_CUSTOMER_ID', 'UBER_DIRECT_CLIENT_ID', 'UBER_DIRECT_CLIENT_SECRET'],
+        setupSteps: [
+          'Apply for Uber Direct and create API credentials',
+          'Set UBER_DIRECT_* environment variables',
+          'Enter Customer ID below and enable the app',
+          'Test a quote + delivery create in sandbox before going live',
+        ],
+      },
+    },
+    {
+      code: 'deliveroo',
+      name: 'Deliveroo',
+      description: 'Partner with Deliveroo for marketplace orders across UK cities.',
+      category: 'marketplace',
+      provider: 'deliveroo',
+      sortOrder: 22,
+      config: {
+        brandId: '',
+        siteId: '',
+        sandbox: true,
+        webhookPath: '/api/v1/webhooks/deliveroo',
+        docsUrl: 'https://developers.deliveroo.com/',
+        envVars: ['DELIVEROO_API_KEY', 'DELIVEROO_WEBHOOK_SECRET'],
+        setupSteps: [
+          'Request Deliveroo partner / developer access',
+          'Set DELIVEROO_API_KEY and webhook secret in environment',
+          'Add brand and site IDs for each branch mapping',
+          'Enable the app and verify menu sync in sandbox',
+        ],
+      },
+    },
+    {
+      code: 'just_eat',
+      name: 'Just Eat',
+      description: 'Just Eat Takeaway.com restaurant / grocery marketplace integration.',
+      category: 'marketplace',
+      provider: 'just_eat',
+      sortOrder: 23,
+      config: {
+        restaurantId: '',
+        partnerId: '',
+        sandbox: true,
+        webhookPath: '/api/v1/webhooks/just-eat',
+        docsUrl: 'https://developer.just-eat.com/',
+        envVars: ['JUST_EAT_API_KEY', 'JUST_EAT_WEBHOOK_SECRET'],
+        setupSteps: [
+          'Register as a Just Eat partner and create API credentials',
+          'Set JUST_EAT_* environment variables',
+          'Enter restaurant / partner IDs below',
+          'Point webhooks at your API and enable the app',
+        ],
+      },
+    },
+    {
+      code: 'doordash_drive',
+      name: 'DoorDash Drive',
+      description: 'DoorDash Drive white-label delivery for your own checkout orders.',
+      category: 'marketplace',
+      provider: 'doordash',
+      sortOrder: 24,
+      config: {
+        developerId: '',
+        externalStoreId: '',
+        sandbox: true,
+        webhookPath: '/api/v1/webhooks/doordash',
+        docsUrl: 'https://developer.doordash.com/en-US/docs/drive/',
+        envVars: ['DOORDASH_DEVELOPER_ID', 'DOORDASH_KEY_ID', 'DOORDASH_SIGNING_SECRET'],
+        setupSteps: [
+          'Create a DoorDash Drive developer account',
+          'Set DOORDASH_* environment variables (JWT signing)',
+          'Map external store IDs to branches',
+          'Enable and run a sandbox delivery quote test',
+        ],
+      },
+    },
+    {
+      code: 'getir',
+      name: 'Getir',
+      description: 'Getir grocery / quick commerce marketplace partnership.',
+      category: 'marketplace',
+      provider: 'getir',
+      sortOrder: 25,
+      config: {
+        merchantId: '',
+        warehouseId: '',
+        sandbox: true,
+        webhookPath: '/api/v1/webhooks/getir',
+        docsUrl: 'https://developers.getir.com/',
+        envVars: ['GETIR_API_KEY', 'GETIR_WEBHOOK_SECRET'],
+        setupSteps: [
+          'Request Getir partner API access',
+          'Set GETIR_* secrets in environment',
+          'Enter merchant / warehouse IDs',
+          'Enable the app after webhook verification',
+        ],
       },
     },
   ];

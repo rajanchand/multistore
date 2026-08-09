@@ -16,9 +16,15 @@ export const productImageSchema = z
     { message: 'Image must be an http(s) URL or data:image upload' },
   );
 
+/** Empty string clears barcode; omit leaves unchanged on update. */
+const barcodeField = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() === '' ? null : v),
+  z.string().trim().max(64).nullable().optional(),
+);
+
 export const createVariantSchema = z.object({
   sku: z.string().trim().min(1).max(64),
-  barcode: z.string().trim().max(64).optional(),
+  barcode: barcodeField,
   name: z.string().trim().min(1).max(200),
   attributes: variantAttributesSchema.default({}),
   costPrice: moneySchema.optional(),
@@ -29,7 +35,7 @@ export const createVariantSchema = z.object({
 
 const createProductObjectSchema = z.object({
   sku: z.string().trim().min(1).max(64),
-  barcode: z.string().trim().max(64).optional(),
+  barcode: barcodeField,
   name: z.string().trim().min(2).max(250),
   slug: slugSchema,
   shortDescription: z.string().trim().max(500).optional(),
@@ -54,6 +60,11 @@ const createProductObjectSchema = z.object({
    * for every variant using variant.defaultPrice as sellingPrice and optional salePrice.
    */
   branchIds: z.array(uuidSchema).max(50).default([]),
+  /**
+   * Opening stock applied to each selected branch inventory row on create.
+   * Lets manually created products sell at POS without a separate stock adjustment.
+   */
+  initialStock: z.number().int().min(0).max(1_000_000).optional(),
 });
 
 export const createProductSchema = createProductObjectSchema.superRefine((data, ctx) => {
@@ -73,7 +84,7 @@ export type CreateProductInput = z.infer<typeof createProductSchema>;
 
 export const updateProductSchema = createProductObjectSchema
   .partial()
-  .omit({ variants: true, branchIds: true, salePrice: true });
+  .omit({ variants: true, branchIds: true, salePrice: true, initialStock: true });
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 
 export const upsertBranchProductSchema = z

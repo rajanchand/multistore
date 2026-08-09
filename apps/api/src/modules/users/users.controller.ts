@@ -1,12 +1,26 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { z } from 'zod';
 import {
   createUserSchema,
   paginationSchema,
+  resetUserPasswordSchema,
   updateUserSchema,
   type CreateUserInput,
+  type ResetUserPasswordInput,
   type UpdateUserInput,
 } from '@repo/validation';
 import { UsersService } from './users.service';
@@ -38,6 +52,16 @@ export class UsersController {
     return this.users.list(user, query);
   }
 
+  @Get('assignable-roles')
+  assignableRoles(@CurrentUser() user: AuthenticatedUser) {
+    return this.users.assignableRoles(user);
+  }
+
+  @Get(':id')
+  get(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.users.get(user, id);
+  }
+
   @Post()
   create(
     @CurrentUser() user: AuthenticatedUser,
@@ -57,6 +81,16 @@ export class UsersController {
     return this.users.update(user, id, body, ctxOf(req));
   }
 
+  @Post(':id/reset-password')
+  resetPassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(resetUserPasswordSchema)) body: ResetUserPasswordInput,
+    @Req() req: Request,
+  ) {
+    return this.users.resetPassword(user, id, body, ctxOf(req));
+  }
+
   @Post(':id/revoke-sessions')
   revokeSessions(
     @CurrentUser() user: AuthenticatedUser,
@@ -64,5 +98,14 @@ export class UsersController {
     @Req() req: Request,
   ) {
     return this.users.revokeSessions(user, id, ctxOf(req));
+  }
+
+  @Delete(':id')
+  remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
+  ) {
+    return this.users.remove(user, id, ctxOf(req));
   }
 }

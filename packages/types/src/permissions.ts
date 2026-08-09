@@ -33,6 +33,9 @@ export const PERMISSIONS = {
   'order.update': 'Update order status',
   'order.cancel': 'Cancel orders',
 
+  // Point of sale
+  'pos.use': 'Use the in-store POS till',
+
   // Payments & refunds
   'payment.read': 'View payments',
   'refund.create': 'Request refunds',
@@ -69,6 +72,10 @@ export const SYSTEM_ROLES: Record<string, { description: string; permissions: Pe
     description: 'Platform-wide administration (HQ)',
     permissions: ALL_PERMISSIONS,
   },
+  ADMIN: {
+    description: 'HQ administrator — manage staff, catalogue, orders, and settings',
+    permissions: ALL_PERMISSIONS.filter((p) => p !== 'role.manage'),
+  },
   BRANCH_MANAGER: {
     description: 'Full management of assigned branches',
     permissions: [
@@ -84,6 +91,7 @@ export const SYSTEM_ROLES: Record<string, { description: string; permissions: Pe
       'order.read',
       'order.update',
       'order.cancel',
+      'pos.use',
       'payment.read',
       'refund.create',
       'customer.read',

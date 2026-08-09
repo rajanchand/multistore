@@ -10,8 +10,10 @@ export const passwordSchema = z
     message: 'Password must mix lower case with upper case or digits',
   });
 
+/** Admin/staff login — email or username. */
 export const loginSchema = z.object({
-  email: emailSchema,
+  /** Email address or username. */
+  email: z.string().trim().min(1).max(320),
   password: z.string().min(1).max(128),
   mfaCode: z
     .string()
@@ -19,6 +21,13 @@ export const loginSchema = z.object({
     .optional(),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
+
+/** Storefront customer login — email only (normalised to lowercase). */
+export const customerLoginSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1).max(128),
+});
+export type CustomerLoginInput = z.infer<typeof customerLoginSchema>;
 
 export const registerSchema = z.object({
   email: emailSchema,
@@ -44,6 +53,20 @@ export const changePasswordSchema = z.object({
   newPassword: passwordSchema,
 });
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+export const updateProfileSchema = z.object({
+  firstName: z.string().trim().min(1).max(100),
+  lastName: z.string().trim().min(1).max(100),
+  username: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3)
+    .max(40)
+    .regex(/^[a-z0-9._-]+$/, 'Username may only contain a-z, 0-9, ., _, -'),
+  email: emailSchema,
+});
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
 export const mfaVerifySchema = z.object({
   code: z.string().regex(/^\d{6}$/, 'Must be a 6-digit code'),
