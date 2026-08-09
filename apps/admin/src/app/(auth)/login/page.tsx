@@ -36,8 +36,10 @@ export default function LoginPage() {
         return;
       }
       // Mirror session onto the admin origin as httpOnly (never document.cookie).
+      // Prefix with basePath when admin is mounted at /admin in production.
       if (body?.token) {
-        const sessionRes = await fetch('/api/session', {
+        const basePath = process.env.NEXT_PUBLIC_ADMIN_BASE_PATH ?? '';
+        const sessionRes = await fetch(`${basePath}/api/session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: body.token }),
