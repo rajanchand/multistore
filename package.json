@@ -1,0 +1,34 @@
+{
+  "name": "multibranch-commerce",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "dotenv -e .env -- turbo run dev",
+    "dev:api": "dotenv -e .env -- pnpm --filter @repo/api dev",
+    "dev:admin": "pnpm --filter @repo/admin dev",
+    "dev:storefront": "pnpm --filter @repo/storefront dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "db:generate": "pnpm --filter @repo/database db:generate",
+    "db:migrate": "pnpm --filter @repo/database db:migrate",
+    "db:migrate:deploy": "pnpm --filter @repo/database db:migrate:deploy",
+    "db:seed": "pnpm --filter @repo/database db:seed",
+    "db:studio": "pnpm --filter @repo/database db:studio",
+    "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker/docker-compose.yml down"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^11.0.0",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3"
+  }
+}

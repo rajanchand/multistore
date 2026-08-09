@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Branch" ADD COLUMN "latitude" DOUBLE PRECISION;
+ALTER TABLE "Branch" ADD COLUMN "longitude" DOUBLE PRECISION;
