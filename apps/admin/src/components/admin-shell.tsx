@@ -28,6 +28,7 @@ import {
   ArrowLeftRight,
 } from 'lucide-react';
 import { cn } from '@repo/ui';
+import { adminPath } from '@/lib/admin-path';
 import { BranchSwitcher } from '@/components/branch-switcher';
 
 export interface NavItem {
@@ -209,10 +210,7 @@ export function AdminShell({
               </div>
             )}
           </div>
-          <form
-            action={`${process.env.NEXT_PUBLIC_ADMIN_BASE_PATH ?? ''}/api/logout`}
-            method="post"
-          >
+          <form action={adminPath('/api/logout')} method="post">
             <button type="submit" className="text-sm text-slate-500 hover:text-slate-900">
               Sign out
             </button>

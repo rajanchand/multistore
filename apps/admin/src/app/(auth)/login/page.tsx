@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@repo/ui';
 import { API_URL } from '@/lib/api';
+import { adminPath } from '@/lib/admin-path';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,16 +37,25 @@ export default function LoginPage() {
         return;
       }
       // Mirror session onto the admin origin as httpOnly (never document.cookie).
-      // Prefix with basePath when admin is mounted at /admin in production.
       if (body?.token) {
-        const basePath = process.env.NEXT_PUBLIC_ADMIN_BASE_PATH ?? '';
-        const sessionRes = await fetch(`${basePath}/api/session`, {
+        const sessionUrl = adminPath('/api/session');
+        let sessionRes = await fetch(sessionUrl, {
           method: 'POST',
+          credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: body.token }),
         });
+        // Local/dev safety: if basePath was baked incorrectly, retry without prefix.
+        if (!sessionRes.ok && sessionUrl !== '/api/session') {
+          sessionRes = await fetch('/api/session', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: body.token }),
+          });
+        }
         if (!sessionRes.ok) {
-          setError('Signed in, but failed to establish a local session cookie.');
+          setError('Signed in, but failed to establish a local session cookie. Try refreshing and signing in again.');
           return;
         }
       }

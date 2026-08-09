@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { adminPath } from '@/lib/admin-path';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+
+function isHttps(req: NextRequest): boolean {
+  if (req.nextUrl.protocol === 'https:') return true;
+  const forwarded = req.headers.get('x-forwarded-proto');
+  if (forwarded?.split(',')[0]?.trim() === 'https') return true;
+  return false;
+}
 
 export async function POST(req: NextRequest) {
   const token = cookies().get('admin_session')?.value;
@@ -16,14 +24,13 @@ export async function POST(req: NextRequest) {
     }).catch(() => undefined);
   }
 
-  const basePath = process.env.NEXT_PUBLIC_ADMIN_BASE_PATH ?? '';
-  const loginUrl = new URL(`${basePath}/login`, req.url);
+  const loginUrl = new URL(adminPath('/login'), req.url);
   const res = NextResponse.redirect(loginUrl, { status: 303 });
   res.cookies.set('admin_session', '', {
     path: '/',
     maxAge: 0,
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isHttps(req),
     sameSite: 'lax',
   });
   return res;
