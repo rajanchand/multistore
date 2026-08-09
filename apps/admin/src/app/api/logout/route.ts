@@ -16,7 +16,8 @@ export async function POST(req: NextRequest) {
     }).catch(() => undefined);
   }
 
-  const loginUrl = new URL('/login', req.url);
+  const basePath = process.env.NEXT_PUBLIC_ADMIN_BASE_PATH ?? '';
+  const loginUrl = new URL(`${basePath}/login`, req.url);
   const res = NextResponse.redirect(loginUrl, { status: 303 });
   res.cookies.set('admin_session', '', {
     path: '/',

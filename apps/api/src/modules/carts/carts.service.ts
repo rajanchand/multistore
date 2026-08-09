@@ -224,6 +224,17 @@ export class CartsService {
     if (!coupon || !coupon.isActive || (coupon.expiresAt && coupon.expiresAt < new Date())) {
       throw Errors.badRequest('INVALID_COUPON', 'This coupon code is invalid or has expired.');
     }
+    if (coupon.maxRedemptions != null && coupon.redemptionCount >= coupon.maxRedemptions) {
+      throw Errors.badRequest('COUPON_EXHAUSTED', 'This coupon has reached its redemption limit.');
+    }
+    if (cart.customerId && coupon.maxRedemptionsPerCustomer > 0) {
+      const used = await this.prisma.couponRedemption.count({
+        where: { couponId: coupon.id, customerId: cart.customerId },
+      });
+      if (used >= coupon.maxRedemptionsPerCustomer) {
+        throw Errors.badRequest('COUPON_ALREADY_USED', 'You have already used this coupon.');
+      }
+    }
     return this.prisma.cart.update({ where: { id: cart.id }, data: { couponCode: code } });
   }
 

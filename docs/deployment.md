@@ -32,6 +32,17 @@ postgresql://commerce:PASSWORD@pgbouncer:5432/commerce?schema=public&pgbouncer=t
 
 Optional Nginx edge cache for anonymous catalogue GETs: [`infra/nginx/storefront-api-cache.conf`](../infra/nginx/storefront-api-cache.conf).
 
+Admin on the same host under `/admin` (recommended single-domain setup):
+
+1. Set in production `.env`:
+   - `ADMIN_BASE_PATH=/admin`
+   - `ADMIN_URL=https://shop.example.com/admin`
+   - `NEXT_PUBLIC_API_URL=https://shop.example.com` (or your public API origin)
+2. Rebuild admin: `docker compose --env-file .env -f infra/docker/docker-compose.prod.yml up -d --build admin`
+3. Include [`infra/nginx/admin-path.conf`](../infra/nginx/admin-path.conf) in the shop server block and reload Nginx.
+
+Locally leave `ADMIN_BASE_PATH` unset and use `http://localhost:3001`.
+
 ### Capacity expectations (honest)
 
 On a **4 CPU / ~4 GB RAM** VPS that also runs other containers:

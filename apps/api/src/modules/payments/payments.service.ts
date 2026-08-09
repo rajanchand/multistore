@@ -33,7 +33,9 @@ export class PaymentsService {
   async handleWebhook(rawBody: Buffer, signature: string): Promise<{ received: true }> {
     const event = this.provider.verifyWebhook(rawBody, signature);
 
-    // Idempotency gate: first writer wins, replays are no-ops.
+    // Idempotency ledger: unique (provider, providerEventId). On duplicate delivery we still
+    // re-enter processEvent — handlers are status-guarded — so a failed first attempt is not
+    // permanently dropped when Stripe retries.
     try {
       await this.prisma.paymentEvent.create({
         data: {
@@ -44,11 +46,10 @@ export class PaymentsService {
         },
       });
     } catch (err) {
-      if (isUniqueViolation(err)) {
-        this.logger.log(`Duplicate webhook event ${event.providerEventId} ignored`);
-        return { received: true };
-      }
-      throw err;
+      if (!isUniqueViolation(err)) throw err;
+      this.logger.log(
+        `Duplicate webhook event ${event.providerEventId} — reprocessing idempotently`,
+      );
     }
 
     await this.processEvent(event);
@@ -152,17 +153,32 @@ export class PaymentsService {
           data: { status: 'COMMITTED' },
         });
 
-        // Coupon redemption counts only on successful payment.
+        // Coupon redemption counts only on successful payment (cap under lock).
         if (order.couponCode) {
           const coupon = await tx.coupon.findUnique({ where: { code: order.couponCode } });
           if (coupon) {
-            await tx.coupon.update({
-              where: { id: coupon.id },
-              data: { redemptionCount: { increment: 1 } },
-            });
-            await tx.couponRedemption.create({
-              data: { couponId: coupon.id, customerId: order.customerId, orderId: order.id },
-            });
+            const capped =
+              coupon.maxRedemptions == null
+                ? await tx.coupon.update({
+                    where: { id: coupon.id },
+                    data: { redemptionCount: { increment: 1 } },
+                  })
+                : (
+                    await tx.coupon.updateMany({
+                      where: {
+                        id: coupon.id,
+                        redemptionCount: { lt: coupon.maxRedemptions },
+                      },
+                      data: { redemptionCount: { increment: 1 } },
+                    })
+                  ).count > 0
+                  ? coupon
+                  : null;
+            if (capped) {
+              await tx.couponRedemption.create({
+                data: { couponId: coupon.id, customerId: order.customerId, orderId: order.id },
+              });
+            }
           }
         }
       }

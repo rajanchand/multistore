@@ -159,6 +159,8 @@ services:
       dockerfile: infra/docker/Dockerfile.admin
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        # Served at https://shop…/admin behind Nginx (must match ADMIN_URL path).
+        ADMIN_BASE_PATH: ${ADMIN_BASE_PATH:-/admin}
     container_name: commerce-admin
     restart: unless-stopped
     environment:

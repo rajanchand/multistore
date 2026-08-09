@@ -110,6 +110,15 @@ export class SessionService {
     principal: { userId?: string; customerId?: string },
     exceptSessionId?: string,
   ): Promise<number> {
+    const targets = await this.prisma.session.findMany({
+      where: {
+        userId: principal.userId,
+        customerId: principal.customerId,
+        revokedAt: null,
+        ...(exceptSessionId ? { id: { not: exceptSessionId } } : {}),
+      },
+      select: { kind: true, tokenHash: true },
+    });
     const result = await this.prisma.session.updateMany({
       where: {
         userId: principal.userId,
@@ -119,6 +128,9 @@ export class SessionService {
       },
       data: { revokedAt: new Date() },
     });
+    await Promise.all(
+      targets.map((s) => this.cache.del(`session:${s.kind}:${s.tokenHash}`)),
+    );
     return result.count;
   }
 
