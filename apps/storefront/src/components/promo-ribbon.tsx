@@ -15,7 +15,7 @@ export async function PromoRibbon() {
   const branchId = cookies().get('preferred_branch')?.value;
   const banners = await storeApi<Banner[]>(
     branchId ? `/storefront/banners?branchId=${branchId}` : '/storefront/banners',
-    { cache: 'no-store' },
+    { next: { revalidate: 45 } },
   ).catch(() => [] as Banner[]);
 
   const promo =

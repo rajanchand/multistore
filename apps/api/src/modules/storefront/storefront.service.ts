@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@repo/database';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Errors } from '../../common/errors';
+import { CacheService } from '../../common/cache/cache.service';
 import {
   approximateLatLngFromPostcode,
   areaPrefix,
@@ -10,6 +11,9 @@ import {
   haversineKm,
   outwardCode,
 } from './uk-postcode';
+
+/** Short TTL for flash-sale spikes; admin catalogue changes appear within a minute. */
+const STOREFRONT_CACHE_TTL_SEC = 45;
 
 interface CatalogueQuery {
   branchId: string;
@@ -25,27 +29,32 @@ interface CatalogueQuery {
 
 @Injectable()
 export class StorefrontService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+  ) {}
 
   async branches() {
-    return this.prisma.branch.findMany({
-      where: { isActive: true, deletedAt: null, code: { not: 'HQ' } },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        city: true,
-        postcode: true,
-        latitude: true,
-        longitude: true,
-        deliveryEnabled: true,
-        clickCollectEnabled: true,
-        deliveryFee: true,
-        freeDeliveryThreshold: true,
-        openingHours: true,
-      },
-      orderBy: { name: 'asc' },
-    });
+    return this.cache.getOrSet('storefront:branches', STOREFRONT_CACHE_TTL_SEC, () =>
+      this.prisma.branch.findMany({
+        where: { isActive: true, deletedAt: null, code: { not: 'HQ' } },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          city: true,
+          postcode: true,
+          latitude: true,
+          longitude: true,
+          deliveryEnabled: true,
+          clickCollectEnabled: true,
+          deliveryFee: true,
+          freeDeliveryThreshold: true,
+          openingHours: true,
+        },
+        orderBy: { name: 'asc' },
+      }),
+    );
   }
 
   /**
@@ -153,40 +162,51 @@ export class StorefrontService {
 
   /** Categories visible for a branch (global + branch-assigned, not hidden). */
   async categories(branchId?: string) {
-    return this.prisma.category.findMany({
-      where: {
-        deletedAt: null,
-        isVisible: true,
-        ...(branchId
-          ? {
-              OR: [{ allBranches: true }, { branches: { some: { branchId } } }],
-            }
-          : {}),
-      },
-      select: { id: true, name: true, slug: true, image: true, parentId: true, sortOrder: true },
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-    });
+    const key = `storefront:categories:${branchId ?? 'all'}`;
+    return this.cache.getOrSet(key, STOREFRONT_CACHE_TTL_SEC, () =>
+      this.prisma.category.findMany({
+        where: {
+          deletedAt: null,
+          isVisible: true,
+          ...(branchId
+            ? {
+                OR: [{ allBranches: true }, { branches: { some: { branchId } } }],
+              }
+            : {}),
+        },
+        select: { id: true, name: true, slug: true, image: true, parentId: true, sortOrder: true },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      }),
+    );
   }
 
   /** Brands visible for a branch. */
   async brands(branchId?: string) {
-    return this.prisma.brand.findMany({
-      where: {
-        deletedAt: null,
-        isVisible: true,
-        ...(branchId
-          ? {
-              OR: [{ allBranches: true }, { branches: { some: { branchId } } }],
-            }
-          : {}),
-      },
-      select: { id: true, name: true, slug: true, image: true, sortOrder: true },
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-    });
+    const key = `storefront:brands:${branchId ?? 'all'}`;
+    return this.cache.getOrSet(key, STOREFRONT_CACHE_TTL_SEC, () =>
+      this.prisma.brand.findMany({
+        where: {
+          deletedAt: null,
+          isVisible: true,
+          ...(branchId
+            ? {
+                OR: [{ allBranches: true }, { branches: { some: { branchId } } }],
+              }
+            : {}),
+        },
+        select: { id: true, name: true, slug: true, image: true, sortOrder: true },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      }),
+    );
   }
 
   /** Branch catalogue: only visible/available branch products of active products. */
   async products(query: CatalogueQuery) {
+    const cacheKey = `storefront:products:${JSON.stringify(query)}`;
+    return this.cache.getOrSet(cacheKey, STOREFRONT_CACHE_TTL_SEC, () => this.productsUncached(query));
+  }
+
+  private async productsUncached(query: CatalogueQuery) {
     const where: Prisma.BranchProductWhereInput = {
       branchId: query.branchId,
       isVisible: true,
@@ -277,6 +297,13 @@ export class StorefrontService {
 
   /** Full product detail with per-branch variant pricing and stock. */
   async productDetail(slug: string, branchId: string) {
+    const key = `storefront:product:${branchId}:${slug}`;
+    return this.cache.getOrSet(key, STOREFRONT_CACHE_TTL_SEC, () =>
+      this.productDetailUncached(slug, branchId),
+    );
+  }
+
+  private async productDetailUncached(slug: string, branchId: string) {
     const product = await this.prisma.product.findFirst({
       where: { slug, status: 'ACTIVE', deletedAt: null },
       include: {
@@ -343,80 +370,84 @@ export class StorefrontService {
   }
 
   async banners(branchId: string) {
-    const now = new Date();
-    return this.prisma.banner.findMany({
-      where: {
-        status: 'ACTIVE',
-        deletedAt: null,
-        startsAt: { lte: now },
-        OR: [{ endsAt: null }, { endsAt: { gte: now } }],
-        AND: [{ OR: [{ isGlobal: true }, { branches: { some: { branchId } } }] }],
-      },
-      select: {
-        id: true,
-        title: true,
-        type: true,
-        image: true,
-        mobileImage: true,
-        ctaLabel: true,
-        ctaUrl: true,
-        body: true,
-        priority: true,
-      },
-      orderBy: { priority: 'asc' },
+    return this.cache.getOrSet(`storefront:banners:${branchId}`, STOREFRONT_CACHE_TTL_SEC, async () => {
+      const now = new Date();
+      return this.prisma.banner.findMany({
+        where: {
+          status: 'ACTIVE',
+          deletedAt: null,
+          startsAt: { lte: now },
+          OR: [{ endsAt: null }, { endsAt: { gte: now } }],
+          AND: [{ OR: [{ isGlobal: true }, { branches: { some: { branchId } } }] }],
+        },
+        select: {
+          id: true,
+          title: true,
+          type: true,
+          image: true,
+          mobileImage: true,
+          ctaLabel: true,
+          ctaUrl: true,
+          body: true,
+          priority: true,
+        },
+        orderBy: { priority: 'asc' },
+      });
     });
   }
 
   /** Aggregated homepage payload: banners, featured products, best sellers, new arrivals. */
   async home(branchId: string) {
-    const [banners, categories, brands, newArrivals, bestSellerRows] = await Promise.all([
-      this.banners(branchId),
-      this.categories(branchId),
-      this.brands(branchId),
-      this.products({ branchId, page: 1, pageSize: 8, sort: 'newest' }),
-      this.prisma.orderItem.groupBy({
-        by: ['variantId'],
-        where: { order: { branchId, status: { notIn: ['CANCELLED', 'REFUNDED'] } } },
-        _sum: { quantity: true },
-        orderBy: { _sum: { quantity: 'desc' } },
-        take: 8,
-      }),
-    ]);
+    return this.cache.getOrSet(`storefront:home:${branchId}`, STOREFRONT_CACHE_TTL_SEC, async () => {
+      const [banners, categories, brands, newArrivals, bestSellerRows] = await Promise.all([
+        this.banners(branchId),
+        this.categories(branchId),
+        this.brands(branchId),
+        this.productsUncached({ branchId, page: 1, pageSize: 8, sort: 'newest' }),
+        this.prisma.orderItem.groupBy({
+          by: ['variantId'],
+          where: { order: { branchId, status: { notIn: ['CANCELLED', 'REFUNDED'] } } },
+          _sum: { quantity: true },
+          orderBy: { _sum: { quantity: 'desc' } },
+          take: 8,
+        }),
+      ]);
 
-    const bestSellerVariantIds = bestSellerRows.map((r) => r.variantId);
-    const bestSellers =
-      bestSellerVariantIds.length > 0
-        ? await this.prisma.branchProduct.findMany({
-            where: {
-              branchId,
-              variantId: { in: bestSellerVariantIds },
-              isVisible: true,
-              product: { status: 'ACTIVE', deletedAt: null },
-            },
-            include: {
-              product: {
-                select: { id: true, name: true, slug: true, brand: true, images: true },
+      const bestSellerVariantIds = bestSellerRows.map((r) => r.variantId);
+      const bestSellers =
+        bestSellerVariantIds.length > 0
+          ? await this.prisma.branchProduct.findMany({
+              where: {
+                branchId,
+                variantId: { in: bestSellerVariantIds },
+                isVisible: true,
+                product: { status: 'ACTIVE', deletedAt: null },
               },
-            },
-          })
-        : [];
+              include: {
+                product: {
+                  select: { id: true, name: true, slug: true, brand: true, images: true },
+                },
+              },
+            })
+          : [];
 
-    return {
-      banners,
-      categories: categories.filter((c) => !c.parentId),
-      brands,
-      newArrivals: newArrivals.items,
-      bestSellers: bestSellers.map((bp) => ({
-        productId: bp.productId,
-        variantId: bp.variantId,
-        name: bp.product.name,
-        slug: bp.product.slug,
-        brand: bp.product.brand,
-        images: bp.product.images,
-        price: bp.sellingPrice,
-        salePrice: bp.salePrice,
-      })),
-    };
+      return {
+        banners,
+        categories: categories.filter((c) => !c.parentId),
+        brands,
+        newArrivals: newArrivals.items,
+        bestSellers: bestSellers.map((bp) => ({
+          productId: bp.productId,
+          variantId: bp.variantId,
+          name: bp.product.name,
+          slug: bp.product.slug,
+          brand: bp.product.brand,
+          images: bp.product.images,
+          price: bp.sellingPrice,
+          salePrice: bp.salePrice,
+        })),
+      };
+    });
   }
 }
 

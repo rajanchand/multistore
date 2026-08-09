@@ -3,6 +3,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { CommonModule } from './common/common.module';
+import { RedisThrottlerStorage } from './common/cache/redis-throttler.storage';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { SessionsModule } from './modules/sessions/sessions.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -32,10 +33,17 @@ import { PosModule } from './modules/pos/pos.module';
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
-    PrismaModule,
     RedisModule,
     CommonModule,
+    ThrottlerModule.forRootAsync({
+      imports: [CommonModule],
+      inject: [RedisThrottlerStorage],
+      useFactory: (storage: RedisThrottlerStorage) => ({
+        throttlers: [{ ttl: 60_000, limit: 100 }],
+        storage,
+      }),
+    }),
+    PrismaModule,
     SessionsModule,
     AuthModule,
     HealthModule,

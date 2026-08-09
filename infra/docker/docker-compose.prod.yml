@@ -1,0 +1,182 @@
+name: multibranch-commerce
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: commerce-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=768MB
+      - -c
+      - max_connections=80
+      - -c
+      - work_mem=4MB
+    volumes:
+      - commerce_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    mem_limit: 768m
+    networks:
+      - commerce
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.23.1-p2
+    container_name: commerce-pgbouncer
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # Session mode is required for Prisma interactive $transaction usage.
+      POOL_MODE: session
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 2
+      RESERVE_POOL_SIZE: 5
+      AUTH_TYPE: scram-sha-256
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -p 5432 || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    mem_limit: 64m
+    networks:
+      - commerce
+
+  redis:
+    image: redis:7-alpine
+    container_name: commerce-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 96mb --maxmemory-policy allkeys-lru
+    volumes:
+      - commerce_redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    mem_limit: 128m
+    networks:
+      - commerce
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: commerce-api
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DISABLE_WORKERS: '1'
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+      APP_URL: ${APP_URL}
+      ADMIN_URL: ${ADMIN_URL}
+      API_URL: ${API_URL}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:4000:4000'
+    mem_limit: 512m
+    networks:
+      - commerce
+
+  api-worker:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: commerce-api-worker
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    environment:
+      NODE_ENV: production
+      WORKER_ONLY: '1'
+      DISABLE_WORKERS: '0'
+      PORT: 4000
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+      APP_URL: ${APP_URL}
+      ADMIN_URL: ${ADMIN_URL}
+      API_URL: ${API_URL}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    mem_limit: 384m
+    networks:
+      - commerce
+
+  storefront:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.storefront
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    container_name: commerce-storefront
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    depends_on:
+      - api
+    ports:
+      - '127.0.0.1:3100:3000'
+    mem_limit: 384m
+    networks:
+      - commerce
+
+  admin:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.admin
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    container_name: commerce-admin
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    depends_on:
+      - api
+    ports:
+      - '127.0.0.1:3101:3001'
+    mem_limit: 384m
+    networks:
+      - commerce
+
+volumes:
+  commerce_postgres_data:
+  commerce_redis_data:
+
+networks:
+  commerce:
+    name: commerce-net

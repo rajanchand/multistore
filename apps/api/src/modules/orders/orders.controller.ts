@@ -58,7 +58,7 @@ const orderListQuerySchema = paginationSchema.extend({
 });
 
 const trackOrderSchema = z.object({
-  orderNumber: z.string().trim().regex(/^ORD-\d{6}$/),
+  orderNumber: z.string().trim().regex(/^ORD-\d{6,}$/),
   email: emailSchema,
 });
 

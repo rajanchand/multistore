@@ -60,7 +60,7 @@ async function resolveBranchId(): Promise<string | null> {
   const preferred = cookies().get('preferred_branch')?.value;
   if (preferred) return preferred;
   const branches = await storeApi<Array<{ id: string }>>('/storefront/branches', {
-    cache: 'no-store',
+    next: { revalidate: 45 },
   }).catch(() => []);
   return branches[0]?.id ?? null;
 }
@@ -69,11 +69,11 @@ export default async function HomePage() {
   const branchId = await resolveBranchId();
   const [home, banners] = branchId
     ? await Promise.all([
-        storeApi<HomeData>(`/storefront/home?branchId=${branchId}`, { cache: 'no-store' }).catch(
-          () => null,
-        ),
+        storeApi<HomeData>(`/storefront/home?branchId=${branchId}`, {
+          next: { revalidate: 45 },
+        }).catch(() => null),
         storeApi<StorefrontBanner[]>(`/storefront/banners?branchId=${branchId}`, {
-          cache: 'no-store',
+          next: { revalidate: 45 },
         }).catch(() => [] as StorefrontBanner[]),
       ])
     : [null, [] as StorefrontBanner[]];

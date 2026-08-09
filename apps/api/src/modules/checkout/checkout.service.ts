@@ -82,8 +82,12 @@ export class CheckoutService {
 
     // Atomic: reserve stock + create order. Conditional UPDATEs prevent oversell.
     const order = await this.prisma.$transaction(async (tx) => {
-      const orderCount = await tx.order.count();
-      const orderNumber = `ORD-${String(orderCount + 1).padStart(6, '0')}`;
+      // Sequence avoids table-wide count() contention under concurrent checkouts.
+      const seqRows = await tx.$queryRaw<Array<{ n: bigint | number }>>`
+        SELECT nextval('order_number_seq') AS n
+      `;
+      const seq = Number(seqRows[0]?.n ?? 0);
+      const orderNumber = `ORD-${String(seq).padStart(6, '0')}`;
 
       for (const item of view.items) {
         const reserved = await this.inventory.reserveWithinTx(tx, {

@@ -4,7 +4,7 @@ import { storeApi } from '@/lib/api';
 export async function CategoriesBar() {
   const categories = await storeApi<Array<{ id: string; name: string; slug: string }>>(
     '/storefront/categories',
-    { cache: 'no-store' },
+    { next: { revalidate: 60 } },
   ).catch(() => [] as Array<{ id: string; name: string; slug: string }>);
 
   if (categories.length === 0) return null;

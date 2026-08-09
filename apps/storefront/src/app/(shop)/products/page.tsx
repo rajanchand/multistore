@@ -15,7 +15,7 @@ export default async function ProductsPage({
 }) {
   const branchId = cookies().get('preferred_branch')?.value;
   const branches = await storeApi<Array<{ id: string }>>('/storefront/branches', {
-    cache: 'no-store',
+    next: { revalidate: 45 },
   }).catch(() => []);
   const resolved = branchId ?? branches[0]?.id;
   if (!resolved) {
@@ -45,7 +45,10 @@ export default async function ProductsPage({
       brand: string | null;
     }>;
     total: number;
-  }>(`/storefront/products?${qs}`, { cache: 'no-store' }).catch(() => ({ items: [], total: 0 }));
+  }>(`/storefront/products?${qs}`, { next: { revalidate: 45 } }).catch(() => ({
+    items: [],
+    total: 0,
+  }));
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">

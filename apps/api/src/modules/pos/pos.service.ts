@@ -389,8 +389,10 @@ export class PosService {
       params;
 
     const order = await this.prisma.$transaction(async (tx) => {
-      const orderCount = await tx.order.count();
-      const orderNumber = `ORD-${String(orderCount + 1).padStart(6, '0')}`;
+      const seqRows = await tx.$queryRaw<Array<{ n: bigint | number }>>`
+        SELECT nextval('order_number_seq') AS n
+      `;
+      const orderNumber = `ORD-${String(Number(seqRows[0]?.n ?? 0)).padStart(6, '0')}`;
 
       for (const line of lines) {
         const reserved = await this.inventory.reserveWithinTx(tx, {
@@ -518,8 +520,10 @@ export class PosService {
     const sessionId = randomUUID();
 
     const order = await this.prisma.$transaction(async (tx) => {
-      const orderCount = await tx.order.count();
-      const orderNumber = `ORD-${String(orderCount + 1).padStart(6, '0')}`;
+      const seqRows = await tx.$queryRaw<Array<{ n: bigint | number }>>`
+        SELECT nextval('order_number_seq') AS n
+      `;
+      const orderNumber = `ORD-${String(Number(seqRows[0]?.n ?? 0)).padStart(6, '0')}`;
 
       for (const line of lines) {
         const reserved = await this.inventory.reserveWithinTx(tx, {

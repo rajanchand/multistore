@@ -33,12 +33,12 @@ interface ProductDetail {
 async function loadProduct(slug: string) {
   const branchId = cookies().get('preferred_branch')?.value;
   const branches = await storeApi<Array<{ id: string }>>('/storefront/branches', {
-    cache: 'no-store',
+    next: { revalidate: 45 },
   }).catch(() => []);
   const resolved = branchId ?? branches[0]?.id;
   if (!resolved) return null;
   return storeApi<ProductDetail>(`/storefront/products/${slug}?branchId=${resolved}`, {
-    cache: 'no-store',
+    next: { revalidate: 45 },
   }).catch(() => null);
 }
 

@@ -2,11 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { generateToken, hashToken } from '@repo/auth';
 import type { Session, SessionKind } from '@repo/database';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CacheService } from '../../common/cache/cache.service';
 
 const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12h
 const CUSTOMER_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 /** Sliding renewal: extend when less than half the TTL remains. */
 const RENEW_THRESHOLD = 0.5;
+/** Short Redis cache of resolved sessions to cut DB hits on authenticated browsing. */
+const SESSION_CACHE_TTL_SEC = 30;
 
 export interface CreateSessionInput {
   kind: SessionKind;
@@ -18,7 +21,10 @@ export interface CreateSessionInput {
 
 @Injectable()
 export class SessionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+  ) {}
 
   ttlFor(kind: SessionKind): number {
     return kind === 'ADMIN' ? ADMIN_SESSION_TTL_MS : CUSTOMER_SESSION_TTL_MS;
@@ -44,8 +50,25 @@ export class SessionService {
 
   /** Resolve a raw token to a live session; touches lastActiveAt and slides expiry. */
   async resolve(rawToken: string, kind: SessionKind): Promise<Session | null> {
+    const tokenHash = hashToken(rawToken);
+    const cacheKey = `session:${kind}:${tokenHash}`;
+    const cached = await this.cache.getJson<Session>(cacheKey);
+    if (cached) {
+      if (cached.revokedAt || new Date(cached.expiresAt) < new Date()) {
+        await this.cache.del(cacheKey);
+        return null;
+      }
+      return {
+        ...cached,
+        expiresAt: new Date(cached.expiresAt),
+        lastActiveAt: new Date(cached.lastActiveAt),
+        createdAt: new Date(cached.createdAt),
+        revokedAt: cached.revokedAt ? new Date(cached.revokedAt) : null,
+      };
+    }
+
     const session = await this.prisma.session.findUnique({
-      where: { tokenHash: hashToken(rawToken) },
+      where: { tokenHash },
     });
     if (!session || session.kind !== kind) return null;
     if (session.revokedAt || session.expiresAt < new Date()) return null;
@@ -54,8 +77,9 @@ export class SessionService {
     const remaining = session.expiresAt.getTime() - Date.now();
     const shouldSlide = remaining < ttl * RENEW_THRESHOLD;
     // Avoid a write on every request: only update when sliding or stale by >5min.
+    let resolved = session;
     if (shouldSlide || Date.now() - session.lastActiveAt.getTime() > 5 * 60 * 1000) {
-      await this.prisma.session.update({
+      resolved = await this.prisma.session.update({
         where: { id: session.id },
         data: {
           lastActiveAt: new Date(),
@@ -63,14 +87,22 @@ export class SessionService {
         },
       });
     }
-    return session;
+    await this.cache.setJson(cacheKey, resolved, SESSION_CACHE_TTL_SEC);
+    return resolved;
   }
 
   async revoke(sessionId: string): Promise<void> {
+    const existing = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { kind: true, tokenHash: true },
+    });
     await this.prisma.session.updateMany({
       where: { id: sessionId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    if (existing) {
+      await this.cache.del(`session:${existing.kind}:${existing.tokenHash}`);
+    }
   }
 
   /** Revoke all sessions for a principal, optionally keeping one alive. */

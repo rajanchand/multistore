@@ -17,6 +17,7 @@ loadDotenv({ path: resolve(__dirname, '../.env'), override: true });
 async function bootstrap(): Promise<void> {
   // Fail fast when critical environment variables are missing.
   const env = loadServerEnv();
+  const workerOnly = process.env.WORKER_ONLY === '1';
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     // Stripe webhook signature verification needs the raw body.
@@ -61,6 +62,14 @@ async function bootstrap(): Promise<void> {
       .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('docs', app, document);
+  }
+
+  if (workerOnly) {
+    // BullMQ / reservation workers start via OnModuleInit; no public HTTP port.
+    await app.init();
+    // eslint-disable-next-line no-console
+    console.log('API worker process ready (WORKER_ONLY=1, HTTP disabled)');
+    return;
   }
 
   await app.listen(env.PORT);

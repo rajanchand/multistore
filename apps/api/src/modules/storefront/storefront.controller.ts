@@ -24,7 +24,7 @@ const catalogueQuerySchema = paginationSchema.extend({
 @ApiTags('storefront')
 @Controller('storefront')
 @UseGuards(ThrottlerGuard)
-@Throttle({ default: { limit: 120, ttl: 60_000 } })
+@Throttle({ default: { limit: 300, ttl: 60_000 } })
 export class StorefrontController {
   constructor(
     private readonly storefront: StorefrontService,
