@@ -9,9 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { API_URL } from '@/lib/api';
-
-const CART_COOKIE = 'cart_token';
+import { fetchCurrentCart } from '@/lib/cart-api';
 
 type CartLine = { quantity: number };
 
@@ -29,12 +27,6 @@ type CartContextValue = {
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
-
-function readCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
 
 function countItems(cart: CartView | null | undefined): number {
   if (!cart?.items?.length) return 0;
@@ -56,25 +48,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshCart = useCallback(async () => {
-    const token = readCookie(CART_COOKIE);
-    if (!token) {
-      setItemCount(0);
+    const result = await fetchCurrentCart();
+    if (result.error) {
+      /* keep last known count on transient failures */
       return;
     }
-    try {
-      const res = await fetch(`${API_URL}/api/v1/carts/current`, {
-        headers: { 'x-cart-token': token },
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        if (res.status === 404) setItemCount(0);
-        return;
-      }
-      const body = (await res.json()) as CartView;
-      setFromCart(body);
-    } catch {
-      /* keep last known count offline */
-    }
+    setFromCart(result.cart ?? { items: [] });
   }, [setFromCart]);
 
   const optimisticAdd = useCallback((qty = 1) => {

@@ -4,19 +4,14 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 import { getPreferredBranchCookie, setPreferredBranchCookie } from '@/lib/branch-cookie';
+import { readCartToken } from '@/lib/cart-cookie';
+import { switchCartBranchViaProxy } from '@/lib/cart-api';
 
 interface Branch {
   id: string;
   name: string;
   slug: string;
   city: string;
-}
-
-const CART_COOKIE = 'cart_token';
-
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
 export function BranchSelector() {
@@ -41,17 +36,10 @@ export function BranchSelector() {
     setSelected(id);
     setPreferredBranchCookie(id);
 
-    const cartToken = readCookie(CART_COOKIE);
+    const cartToken = readCartToken();
     if (cartToken) {
       try {
-        await fetch(`${API_URL}/api/v1/carts/branch`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-cart-token': cartToken,
-          },
-          body: JSON.stringify({ branchId: id }),
-        });
+        await switchCartBranchViaProxy(cartToken, id);
       } catch {
         /* reload will still apply preferred_branch pricing on next cart create */
       }

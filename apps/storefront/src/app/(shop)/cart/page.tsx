@@ -1,71 +1,70 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatMoney } from '@repo/types';
 import { Button } from '@repo/ui';
-import { API_URL } from '@/lib/api';
 import { useCart } from '@/lib/cart-context';
+import { fetchCurrentCart, type CartApiView } from '@/lib/cart-api';
+import { clearCartToken } from '@/lib/cart-cookie';
 import { primaryProductImage } from '@/lib/product-image';
-
-interface CartView {
-  id: string;
-  items: Array<{
-    id: string;
-    name: string;
-    slug?: string;
-    quantity: number;
-    unitPrice: number;
-    images?: string[];
-    problems: string[];
-  }>;
-  totals: {
-    subtotal: number;
-    discountTotal: number;
-    deliveryFee: number;
-    taxTotal: number;
-    total: number;
-  };
-  hasProblems: boolean;
-}
 
 export default function CartPage() {
   const { setFromCart } = useCart();
-  const [cart, setCart] = useState<CartView | null>(null);
+  const [cart, setCart] = useState<CartApiView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    const match = document.cookie.match(/(?:^|; )cart_token=([^;]*)/);
-    if (!match?.[1]) {
-      setLoaded(true);
+  const loadCart = useCallback(async () => {
+    setError(null);
+    const result = await fetchCurrentCart();
+    if (result.error) {
+      setCart(null);
+      setError(result.error);
       setFromCart({ items: [] });
-      return;
+    } else {
+      setCart(result.cart);
+      setFromCart(result.cart ?? { items: [] });
     }
-    fetch(`${API_URL}/api/v1/carts/current`, {
-      headers: { 'x-cart-token': decodeURIComponent(match[1]) },
-    })
-      .then(async (r) => {
-        if (!r.ok) throw new Error('Cart unavailable');
-        return r.json();
-      })
-      .then((data: CartView) => {
-        setCart(data);
-        setFromCart(data);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoaded(true));
+    setLoaded(true);
   }, [setFromCart]);
 
-  if (error) {
-    return <div className="mx-auto max-w-3xl px-4 py-16 text-rose-600">{error}</div>;
+  useEffect(() => {
+    void loadCart();
+  }, [loadCart]);
+
+  function resetCart() {
+    clearCartToken();
+    setError(null);
+    setCart(null);
+    setFromCart({ items: [] });
   }
 
   if (!loaded) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-sm text-[var(--nm-muted)]">
         Loading cart…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-16">
+        <h1 className="font-display text-4xl font-bold tracking-tight text-black">Your cart</h1>
+        <p className="mt-4 text-rose-600">{error}</p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Button type="button" className="h-12 rounded-xl px-6" onClick={() => void loadCart()}>
+            Try again
+          </Button>
+          <Button type="button" variant="outline" className="h-12 rounded-xl px-6" onClick={resetCart}>
+            Start a new cart
+          </Button>
+          <Button asChild variant="outline" className="h-12 rounded-xl px-6">
+            <Link href="/products">Continue shopping</Link>
+          </Button>
+        </div>
       </div>
     );
   }

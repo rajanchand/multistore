@@ -2,24 +2,10 @@
 
 import { useState } from 'react';
 import { Button } from '@repo/ui';
-import { API_URL } from '@/lib/api';
 import { useCart } from '@/lib/cart-context';
-
-const CART_COOKIE = 'cart_token';
-const BRANCH_COOKIE = 'preferred_branch';
-
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
-function writeCartCookie(token: string) {
-  document.cookie = `${CART_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=2592000; SameSite=Lax`;
-}
-
-function clearCartCookie() {
-  document.cookie = `${CART_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
-}
+import { addCartItemViaProxy, createCartViaProxy } from '@/lib/cart-api';
+import { clearCartToken, readCartToken, writeCartToken } from '@/lib/cart-cookie';
+import { getPreferredBranchCookie } from '@/lib/branch-cookie';
 
 export function AddToCartButton({
   productId,
@@ -39,32 +25,15 @@ export function AddToCartButton({
   const [message, setMessage] = useState<string | null>(null);
 
   async function createCart(branchId: string): Promise<string> {
-    const res = await fetch(`${API_URL}/api/v1/carts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ branchId }),
-    });
-    const body = await res.json();
-    if (!res.ok) throw new Error(body?.error?.message ?? 'Could not create cart');
-    writeCartCookie(body.token as string);
-    return body.token as string;
+    const body = await createCartViaProxy(branchId);
+    writeCartToken(body.token);
+    return body.token;
   }
 
   async function ensureCart(branchId: string): Promise<string> {
-    const existing = readCookie(CART_COOKIE);
+    const existing = readCartToken();
     if (existing) return existing;
     return createCart(branchId);
-  }
-
-  async function addItem(token: string, branchId: string) {
-    return fetch(`${API_URL}/api/v1/carts/items`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-cart-token': token,
-      },
-      body: JSON.stringify({ branchId, productId, variantId, quantity: 1 }),
-    });
   }
 
   async function add(e?: React.MouseEvent) {
@@ -73,16 +42,16 @@ export function AddToCartButton({
     setLoading(true);
     setMessage(null);
     try {
-      const branchId = readCookie(BRANCH_COOKIE);
+      const branchId = getPreferredBranchCookie();
       if (!branchId) throw new Error('Select a store first');
       let token = await ensureCart(branchId);
-      let res = await addItem(token, branchId);
+      let res = await addCartItemViaProxy({ token, branchId, productId, variantId });
 
       // Stale/checked-out cart — recreate once and retry.
-      if (res.status === 404 || res.status === 409) {
-        clearCartCookie();
+      if (res.status === 404 || res.status === 409 || res.status === 410) {
+        clearCartToken();
         token = await createCart(branchId);
-        res = await addItem(token, branchId);
+        res = await addCartItemViaProxy({ token, branchId, productId, variantId });
       }
 
       const body = await res.json();
