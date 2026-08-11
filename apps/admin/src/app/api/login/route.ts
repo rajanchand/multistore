@@ -48,13 +48,14 @@ export async function POST(req: NextRequest) {
     });
 
     const text = await upstream.text();
-    let data: {
+    type LoginResponseBody = {
       token?: string;
       user?: unknown;
       error?: { code?: string; message?: string };
-    } | null = null;
+    };
+    let data: LoginResponseBody | null = null;
     try {
-      data = JSON.parse(text) as typeof data;
+      data = JSON.parse(text) as LoginResponseBody;
     } catch {
       data = null;
     }
