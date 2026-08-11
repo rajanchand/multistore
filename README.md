@@ -42,6 +42,13 @@ Most seeded passwords: `DevPassword123!` (development only). Override Super Admi
 | Demo shopper (checkout) | `demo@dev.local` |
 | Customer | `alice@example.dev` |
 
+Product images use curated HD photos (Red Bull, Monster, juices, fruit, etc.). With `GEMINI_API_KEY` set, generate AI packshots:
+
+```bash
+pnpm db:enrich-images
+# optional: ENRICH_IMAGE_LIMIT=5 GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
+```
+
 See `packages/database/src/seed/dev-credentials.md`.
 
 ## Architecture highlights

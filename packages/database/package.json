@@ -19,6 +19,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "pnpm --filter @repo/types build && tsx src/seed/index.ts",
+    "enrich:images": "tsx src/seed/enrich-product-images.ts",
     "db:studio": "prisma studio"
   },
   "prisma": {

@@ -13,6 +13,7 @@ import type { OrderStatus } from '@prisma/client';
 import argon2 from 'argon2';
 import { ALL_PERMISSIONS, PERMISSIONS, SYSTEM_ROLES } from '@repo/types';
 import { BRANCHES, CATEGORIES, PRODUCTS, CUSTOMERS } from './data';
+import { CATEGORY_IMAGES } from './product-images';
 
 const prisma = new PrismaClient();
 
@@ -146,7 +147,9 @@ async function seedUsers() {
 
 async function seedCategories() {
   for (const c of CATEGORIES) {
-    const image = `https://picsum.photos/seed/cat-${c.slug}/640/480`;
+    const image =
+      CATEGORY_IMAGES[c.slug] ??
+      `https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=960&h=640&q=80`;
     await prisma.category.upsert({
       where: { slug: c.slug },
       create: { ...c, image, isVisible: true, allBranches: true },
