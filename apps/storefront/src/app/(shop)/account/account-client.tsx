@@ -115,7 +115,7 @@ export default function AccountClient() {
     }
   }
 
-  async function useDemoAccount() {
+  async function signInWithDemoAccount() {
     setLoading(true);
     setError(null);
     setMode('login');
@@ -219,7 +219,7 @@ export default function AccountClient() {
                 variant="outline"
                 className="w-full"
                 disabled={loading}
-                onClick={() => void useDemoAccount()}
+                onClick={() => void signInWithDemoAccount()}
               >
                 {loading ? 'Signing in…' : 'Continue with demo account'}
               </Button>

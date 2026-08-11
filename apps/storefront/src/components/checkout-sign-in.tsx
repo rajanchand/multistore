@@ -12,7 +12,7 @@ export function CheckoutSignIn() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function useDemoAccount() {
+  async function signInWithDemoAccount() {
     setLoading(true);
     setError(null);
     const result = await loginCustomerSession(DEMO_CUSTOMER.email, DEMO_CUSTOMER.password);
@@ -57,7 +57,7 @@ export function CheckoutSignIn() {
               type="button"
               className="rounded-xl"
               disabled={loading}
-              onClick={() => void useDemoAccount()}
+              onClick={() => void signInWithDemoAccount()}
             >
               {loading ? 'Signing in…' : 'Continue with demo account'}
             </Button>
