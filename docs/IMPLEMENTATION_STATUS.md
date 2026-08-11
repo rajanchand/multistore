@@ -2,7 +2,7 @@
 
 Legend: `[ ]` Not started · `[~]` In progress · `[x]` Complete · `[!]` Blocked
 
-**Last verified:** 2026-08-09 — Multi-step storefront checkout + Stripe Elements; public payment-config; admin stock transfers UI; CONTRIBUTING.md.
+**Last verified:** 2026-08-11 — Report PDF download + email-to-managers/staff on all HQ reports; SMTP/log email provider.
 
 ## Runtime (verified)
 
@@ -119,6 +119,8 @@ Most seed passwords: `DevPassword123!` (override Super Admin with `SEED_SUPERADM
 - [x] SMS send (individual + bulk) via BullMQ + LogSmsProvider / Twilio (`sms.send`)
 - [x] Analytics (DB aggregation dashboard)
 - [x] HQ Reports API + admin (`report.read`) — sales / orders / inventory
+- [x] Report PDF download (`GET /reports/:kind/pdf`) + one-click email send to managers/staff (`POST /reports/:kind/send`, `GET /reports/recipients`)
+- [x] Email provider (`log` default; SMTP via `EMAIL_SMTP_*`)
 - [x] Login sessions UI (`GET/DELETE /auth/sessions`)
 - [x] Settings hub: Staff, Branches, About, FAQs, Payment methods
 - [x] Content CMS models: Faq, AboutContent, PaymentMethodConfig

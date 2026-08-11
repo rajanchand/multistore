@@ -3,9 +3,12 @@ import { cookies } from 'next/headers';
 import { formatMoney } from '@repo/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/ui';
 import { api, ApiError } from '@/lib/api';
+import { getSelectedBranchId, withBranchQuery } from '@/lib/branch-context';
+import { ReportActions } from '@/components/report-actions';
 
 export default async function SalesReportPage() {
   const token = cookies().get('admin_session')?.value;
+  const branchId = getSelectedBranchId();
   let data: {
     overview: { totalRevenue: number; orders: number; averageOrderValue: number };
     salesByCategory: Array<{ categoryName: string; revenue: number; units: number }>;
@@ -15,7 +18,7 @@ export default async function SalesReportPage() {
   let error: string | null = null;
 
   try {
-    data = await api('/reports/sales?range=30d', {
+    data = await api(withBranchQuery('/reports/sales?range=30d', branchId), {
       token,
       cache: 'no-store',
       headers: token ? { Cookie: `admin_session=${token}` } : {},
@@ -34,6 +37,9 @@ export default async function SalesReportPage() {
           / Sales
         </p>
         <h1 className="mt-1 text-2xl font-semibold">Sales report</h1>
+        <div className="mt-4">
+          <ReportActions kind="sales" range="30d" branchId={branchId} />
+        </div>
       </div>
       {error && (
         <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">

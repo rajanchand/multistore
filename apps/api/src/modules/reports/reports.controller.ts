@@ -1,14 +1,32 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Header,
+  Param,
+  Post,
+  Query,
+  Req,
+  StreamableFile,
+  UseGuards,
+} from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
-import { uuidSchema } from '@repo/validation';
+import {
+  reportKindSchema,
+  sendReportSchema,
+  uuidSchema,
+  type SendReportInput,
+} from '@repo/validation';
 import { ReportsService } from './reports.service';
 import { AdminAuthGuard } from '../../common/guards/admin-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
-import type { AuthenticatedUser } from '../../common/auth-context';
+import type { AuthenticatedUser, RequestContext } from '../../common/auth-context';
+import { Errors } from '../../common/errors';
 
 const rangeSchema = z.object({
   from: z.coerce.date().optional(),
@@ -23,7 +41,11 @@ const rangeSchema = z.object({
     }),
 });
 
-function resolveRange(query: z.infer<typeof rangeSchema>): { from: Date; to: Date } {
+function resolveRange(query: {
+  from?: Date;
+  to?: Date;
+  range: 'today' | 'yesterday' | '7d' | '30d' | 'month' | 'year' | 'custom';
+}): { from: Date; to: Date } {
   const now = new Date();
   const endOfDay = (d: Date) => {
     const x = new Date(d);
@@ -71,6 +93,18 @@ function resolveRange(query: z.infer<typeof rangeSchema>): { from: Date; to: Dat
   }
 }
 
+function ctxOf(req: Request): RequestContext {
+  return { requestId: (req as Request & { requestId?: string }).requestId, ip: req.ip };
+}
+
+function parseKind(kind: string) {
+  const parsed = reportKindSchema.safeParse(kind);
+  if (!parsed.success) {
+    throw Errors.badRequest('INVALID_REPORT', 'Report kind must be summary, sales, orders, or inventory.');
+  }
+  return parsed.data;
+}
+
 @ApiTags('reports')
 @Controller('reports')
 @UseGuards(AdminAuthGuard, PermissionsGuard)
@@ -106,7 +140,60 @@ export class ReportsController {
   }
 
   @Get('inventory')
-  inventory(@CurrentUser() user: AuthenticatedUser) {
-    return this.reports.inventoryReport(user);
+  inventory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query(new ZodValidationPipe(rangeSchema)) query: z.infer<typeof rangeSchema>,
+  ) {
+    return this.reports.inventoryReport(user, query.branchIds);
+  }
+
+  @Get('recipients')
+  recipients(@CurrentUser() user: AuthenticatedUser) {
+    return this.reports.recipients(user);
+  }
+
+  @Get(':kind/pdf')
+  @Header('Content-Type', 'application/pdf')
+  async pdf(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('kind') kindParam: string,
+    @Query(new ZodValidationPipe(rangeSchema)) query: z.infer<typeof rangeSchema>,
+  ) {
+    const kind = parseKind(kindParam);
+    const { from, to } = resolveRange(query);
+    const { buffer, filename } = await this.reports.buildPdf(
+      kind,
+      user,
+      { from, to, branchIds: query.branchIds },
+      query.range,
+    );
+    return new StreamableFile(buffer, {
+      type: 'application/pdf',
+      disposition: `attachment; filename="${filename}"`,
+    });
+  }
+
+  @Post(':kind/send')
+  send(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('kind') kindParam: string,
+    @Body(new ZodValidationPipe(sendReportSchema)) body: SendReportInput,
+    @Req() req: Request,
+  ) {
+    const kind = parseKind(kindParam);
+    const rangeKey = body.range ?? '30d';
+    const { from, to } = resolveRange({
+      range: rangeKey,
+      from: body.from,
+      to: body.to,
+    });
+    return this.reports.sendReport(
+      kind,
+      user,
+      { from, to, branchIds: body.branchIds },
+      body,
+      rangeKey,
+      ctxOf(req),
+    );
   }
 }

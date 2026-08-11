@@ -4,6 +4,7 @@ import { formatMoney } from '@repo/types';
 import { Badge, Card, CardContent, CardHeader, CardTitle } from '@repo/ui';
 import { api, ApiError } from '@/lib/api';
 import { getSelectedBranchId, withBranchQuery } from '@/lib/branch-context';
+import { ReportActions } from '@/components/report-actions';
 
 interface SummaryReport {
   range: { from: string; to: string };
@@ -75,6 +76,9 @@ export default async function ReportsPage() {
           <Link className="text-primary hover:underline" href="/reports/inventory">
             Inventory detail
           </Link>
+        </div>
+        <div className="mt-4">
+          <ReportActions kind="summary" range="30d" branchId={branchId} />
         </div>
       </div>
 
