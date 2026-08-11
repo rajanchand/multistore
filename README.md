@@ -45,9 +45,13 @@ Most seeded passwords: `DevPassword123!` (development only). Override Super Admi
 Product images use curated HD photos (Red Bull, Monster, juices, fruit, etc.). With `GEMINI_API_KEY` set, generate AI packshots:
 
 ```bash
+# 1) https://aistudio.google.com/apikey → set GEMINI_API_KEY in .env → restart API
+# 2) Confirm: curl -s localhost:4000/api/v1/health | jq .integrations.gemini
 pnpm db:enrich-images
 # optional: ENRICH_IMAGE_LIMIT=5 GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
 ```
+
+Admin → SMS shows whether Gemini is configured. Without a key, SMS uses a safe template fallback.
 
 See `packages/database/src/seed/dev-credentials.md`.
 

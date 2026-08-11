@@ -30,6 +30,10 @@ const serverEnvSchema = z.object({
   EMAIL_SMTP_PASS: z.string().optional(),
   EMAIL_SMTP_SECURE: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
+  /** Google Gemini — SMS auto-compose + optional product image enrichment. */
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().optional(),
+  GEMINI_IMAGE_MODEL: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

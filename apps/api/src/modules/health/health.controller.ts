@@ -1,6 +1,7 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type Redis from 'ioredis';
+import { loadServerEnv } from '@repo/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { REDIS } from '../../redis/redis.module';
 
@@ -27,7 +28,15 @@ export class HealthController {
       /* reported below */
     }
     const healthy = Object.values(checks).every((s) => s === 'up');
-    return { status: healthy ? 'ok' : 'degraded', checks, timestamp: new Date().toISOString() };
+    const geminiConfigured = Boolean(loadServerEnv().GEMINI_API_KEY?.trim());
+    return {
+      status: healthy ? 'ok' : 'degraded',
+      checks,
+      integrations: {
+        gemini: geminiConfigured ? 'configured' : 'missing',
+      },
+      timestamp: new Date().toISOString(),
+    };
   }
 
   @Get('live')

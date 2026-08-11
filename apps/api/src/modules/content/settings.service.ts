@@ -127,6 +127,35 @@ export class SettingsService {
     };
   }
 
+  /** Google Gemini status for SMS compose + catalogue image enrichment (never exposes the key). */
+  getGeminiIntegrationStatus() {
+    const env = loadServerEnv();
+    const configured = Boolean(env.GEMINI_API_KEY?.trim());
+    const smsModel = (env.GEMINI_MODEL?.trim() || 'gemini-2.0-flash').replace(/^models\//, '');
+    const imageModel = (env.GEMINI_IMAGE_MODEL?.trim() || 'gemini-2.5-flash-image').replace(
+      /^models\//,
+      '',
+    );
+    return {
+      provider: 'google-gemini',
+      configured,
+      smsModel,
+      imageModel,
+      envVars: ['GEMINI_API_KEY', 'GEMINI_MODEL', 'GEMINI_IMAGE_MODEL'],
+      setup: [
+        'Create an API key at https://aistudio.google.com/apikey',
+        'Set GEMINI_API_KEY in the API root .env (never commit the key)',
+        'Optional: GEMINI_MODEL (SMS) and GEMINI_IMAGE_MODEL (packshots)',
+        'Restart the API process after changing env',
+        'Generate catalogue images with: pnpm db:enrich-images',
+      ],
+      docsUrl: 'https://aistudio.google.com/apikey',
+      message: configured
+        ? 'Gemini is configured. SMS Generate with AI uses the live model; run pnpm db:enrich-images for packshots.'
+        : 'Gemini is not configured. SMS falls back to templates. Add GEMINI_API_KEY to .env and restart the API.',
+    };
+  }
+
   listPlugins(includeDisabled = true, category?: string) {
     return this.prisma.plugin.findMany({
       where: {
