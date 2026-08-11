@@ -28,19 +28,23 @@ export function ProductCard({
   return (
     <article className="group flex h-full flex-col nm-card-lift">
       <Link href={`/products/${product.slug}`} className="block">
-        <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-[var(--nm-soft)]">
+        <div className="relative aspect-square overflow-hidden rounded-2xl bg-white ring-1 ring-[var(--nm-line)]">
           {isRemote ? (
             <Image
               src={src}
               alt={product.name}
               fill
               sizes="(max-width: 768px) 50vw, 25vw"
-              className="object-cover transition duration-500 ease-out group-hover:scale-[1.04]"
+              className="object-contain p-3 transition duration-500 ease-out group-hover:scale-[1.03]"
               unoptimized={src.includes('placehold.co') || src.startsWith('data:')}
             />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={src} alt={product.name} className="h-full w-full object-cover" />
+            <img
+              src={src}
+              alt={product.name}
+              className="h-full w-full object-contain p-3"
+            />
           )}
           {product.salePrice != null && (
             <span className="absolute left-3 top-3 rounded-md bg-[var(--nm-highlight)] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-black">
