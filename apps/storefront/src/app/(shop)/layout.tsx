@@ -4,6 +4,7 @@ import { CategoriesBar } from '@/components/categories-bar';
 import { PromoRibbon } from '@/components/promo-ribbon';
 import { ChatPlugins } from '@/components/chat-plugins';
 import { MobileNav } from '@/components/mobile-nav';
+import { CartProvider } from '@/lib/cart-context';
 import { getPublicSettings } from '@/lib/public-settings';
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
@@ -13,7 +14,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
   );
 
   return (
-    <>
+    <CartProvider>
       <PromoRibbon />
       <SiteHeader />
       <CategoriesBar />
@@ -21,6 +22,6 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
       <SiteFooter />
       <MobileNav />
       <ChatPlugins plugins={chatPlugins} />
-    </>
+    </CartProvider>
   );
 }

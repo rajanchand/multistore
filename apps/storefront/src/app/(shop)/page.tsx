@@ -22,6 +22,7 @@ interface HomeData {
   categories: Array<{ id: string; name: string; slug: string }>;
   newArrivals: Array<{
     productId: string;
+    variantId: string;
     name: string;
     slug: string;
     price: number;
@@ -30,6 +31,7 @@ interface HomeData {
   }>;
   bestSellers: Array<{
     productId: string;
+    variantId: string;
     name: string;
     slug: string;
     price: number;
@@ -87,7 +89,7 @@ export default async function HomePage() {
       <section className="mx-auto max-w-6xl px-4 py-14 nm-animate-in">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h2 className="font-display text-3xl font-bold tracking-tight text-[var(--nm-ink)] sm:text-4xl">
+            <h2 className="font-display text-3xl font-bold tracking-tight text-black sm:text-4xl">
               Popular categories
             </h2>
             <p className="mt-2 text-sm text-[var(--nm-muted)]">Jump straight to what you need.</p>
@@ -119,7 +121,7 @@ export default async function HomePage() {
       <ProductRail title="Best sellers" products={home?.bestSellers ?? []} />
 
       <section className="mx-auto max-w-6xl px-4 py-16 nm-animate-in-delay">
-        <h2 className="font-display text-3xl font-bold tracking-tight text-[var(--nm-ink)]">
+        <h2 className="font-display text-3xl font-bold tracking-tight text-black">
           Why shop with us
         </h2>
         <p className="mt-2 max-w-xl text-sm text-[var(--nm-muted)]">
@@ -161,6 +163,8 @@ function ProductRail({
 }: {
   title: string;
   products: Array<{
+    productId?: string;
+    variantId?: string;
     name: string;
     slug: string;
     price: number;
@@ -171,7 +175,7 @@ function ProductRail({
   return (
     <section className="mx-auto max-w-6xl px-4 py-10">
       <div className="flex items-end justify-between gap-4">
-        <h2 className="font-display text-3xl font-bold tracking-tight text-[var(--nm-ink)]">{title}</h2>
+        <h2 className="font-display text-3xl font-bold tracking-tight text-black">{title}</h2>
         <Link
           href="/products"
           className="text-sm font-semibold text-[var(--nm-accent)] hover:underline"
@@ -181,10 +185,16 @@ function ProductRail({
       </div>
       <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {products.map((p) => (
-          <ProductCard key={p.slug} product={p} />
+          <ProductCard
+            key={p.slug}
+            product={{
+              ...p,
+              inStock: true,
+            }}
+          />
         ))}
         {products.length === 0 && (
-          <p className="col-span-full border border-dashed border-[var(--nm-line)] px-4 py-12 text-center text-sm text-[var(--nm-muted)]">
+          <p className="col-span-full border border-dashed border-[var(--nm-line)] bg-white px-4 py-12 text-center text-sm text-[var(--nm-muted)]">
             No products yet — run seed data and select a branch.
           </p>
         )}

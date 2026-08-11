@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Menu, Search, ShoppingBag, User, X } from 'lucide-react';
+import { Menu, Search, User, X } from 'lucide-react';
 import { BranchSelector } from './branch-selector';
+import { CartBadgeLink } from './cart-badge-link';
 
 const NAV = [
   { href: '/products', label: 'Shop' },
@@ -31,11 +32,11 @@ export function SiteHeader() {
   }, [open]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--nm-line)]/80 bg-[var(--nm-surface)]/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-[var(--nm-line)] bg-[var(--nm-surface)]/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
         <button
           type="button"
-          className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--nm-line)] text-[var(--nm-ink)] md:hidden"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--nm-line)] text-[var(--nm-ink)] transition hover:bg-[var(--nm-soft)] md:hidden"
           aria-label={open ? 'Close menu' : 'Open menu'}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
@@ -47,11 +48,10 @@ export function SiteHeader() {
           href="/"
           className="font-display text-[1.35rem] font-bold leading-none tracking-tight text-[var(--nm-ink)]"
         >
-          Neighbourhood{' '}
-          <span className="text-[var(--nm-accent)]">Market</span>
+          Neighbourhood <span className="text-[var(--nm-accent)]">Market</span>
         </Link>
 
-        <nav className="ml-6 hidden items-center gap-1 text-sm font-semibold text-[var(--nm-muted)] lg:flex">
+        <nav className="ml-6 hidden items-center gap-1 text-sm font-semibold text-[var(--nm-ink)] lg:flex">
           {NAV.slice(0, 4).map((item) => (
             <Link
               key={item.href}
@@ -70,7 +70,7 @@ export function SiteHeader() {
             <input
               name="q"
               placeholder="Search products…"
-              className="h-11 w-full rounded-xl border border-[var(--nm-line)] bg-[var(--nm-canvas)] pl-10 pr-3 text-sm outline-none ring-[var(--nm-accent)]/25 placeholder:text-[var(--nm-muted)] focus:bg-white focus:ring-2"
+              className="h-11 w-full rounded-xl border border-[var(--nm-line)] bg-white pl-10 pr-3 text-sm text-[var(--nm-ink)] outline-none ring-[var(--nm-accent)]/25 placeholder:text-[var(--nm-muted)] focus:ring-2"
             />
           </label>
         </form>
@@ -84,13 +84,7 @@ export function SiteHeader() {
           >
             <User className="h-4 w-4" />
           </Link>
-          <Link
-            href="/cart"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--nm-accent)] text-white transition hover:bg-[var(--nm-accent-hover)]"
-            aria-label="Cart"
-          >
-            <ShoppingBag className="h-4 w-4" />
-          </Link>
+          <CartBadgeLink />
         </div>
       </div>
 
@@ -98,11 +92,11 @@ export function SiteHeader() {
         <div className="fixed inset-0 top-16 z-40 md:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-[var(--nm-ink)]/25"
+            className="absolute inset-0 bg-black/20"
             aria-label="Close menu"
             onClick={() => setOpen(false)}
           />
-          <div className="relative max-h-[calc(100vh-4rem)] overflow-y-auto border-t border-[var(--nm-line)] bg-[var(--nm-surface)] px-4 py-5 shadow-sm">
+          <div className="relative max-h-[calc(100vh-4rem)] overflow-y-auto border-t border-[var(--nm-line)] bg-white px-4 py-5 shadow-lg">
             <form action="/search" className="mb-4">
               <label className="relative block">
                 <span className="sr-only">Search products</span>
@@ -110,7 +104,7 @@ export function SiteHeader() {
                 <input
                   name="q"
                   placeholder="Search products…"
-                  className="h-12 w-full rounded-xl border border-[var(--nm-line)] bg-[var(--nm-canvas)] pl-10 pr-3 text-base outline-none focus:ring-2 focus:ring-[var(--nm-accent)]/30"
+                  className="h-12 w-full rounded-xl border border-[var(--nm-line)] bg-white pl-10 pr-3 text-base text-[var(--nm-ink)] outline-none focus:ring-2 focus:ring-[var(--nm-accent)]/30"
                 />
               </label>
             </form>
