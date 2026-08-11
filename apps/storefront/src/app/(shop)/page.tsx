@@ -1,9 +1,11 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { cookies } from 'next/headers';
 import { ArrowRight, Clock3, MapPin, ShieldCheck } from 'lucide-react';
 import { storeApi } from '@/lib/api';
 import { HeroCarousel, type HeroSlide } from '@/components/hero-carousel';
 import { ProductCard } from '@/components/product-card';
+import { PRODUCT_IMAGE_FALLBACK } from '@/lib/product-image';
 
 interface StorefrontBanner {
   id: string;
@@ -17,27 +19,23 @@ interface StorefrontBanner {
   priority?: number;
 }
 
+interface HomeProduct {
+  productId: string;
+  variantId: string;
+  name: string;
+  slug: string;
+  price: number;
+  salePrice: number | null;
+  images: string[];
+  inStock?: boolean;
+  clickCollectEnabled?: boolean;
+}
+
 interface HomeData {
   banners: StorefrontBanner[];
-  categories: Array<{ id: string; name: string; slug: string }>;
-  newArrivals: Array<{
-    productId: string;
-    variantId: string;
-    name: string;
-    slug: string;
-    price: number;
-    salePrice: number | null;
-    images: string[];
-  }>;
-  bestSellers: Array<{
-    productId: string;
-    variantId: string;
-    name: string;
-    slug: string;
-    price: number;
-    salePrice: number | null;
-    images: string[];
-  }>;
+  categories: Array<{ id: string; name: string; slug: string; image?: string | null }>;
+  newArrivals: HomeProduct[];
+  bestSellers: HomeProduct[];
 }
 
 function toHeroSlides(banners: StorefrontBanner[]): HeroSlide[] {
@@ -101,18 +99,35 @@ export default async function HomePage() {
             Shop all <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 border-t border-[var(--nm-line)] pt-6">
-          {(home?.categories ?? []).slice(0, 8).map((c) => (
-            <Link
-              key={c.id}
-              href={`/categories/${c.slug}`}
-              className="text-base font-semibold text-[var(--nm-ink)] underline-offset-4 transition hover:text-[var(--nm-accent)] hover:underline"
-            >
-              {c.name}
-            </Link>
-          ))}
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {(home?.categories ?? []).slice(0, 8).map((c) => {
+            const image = c.image || PRODUCT_IMAGE_FALLBACK;
+            return (
+              <Link
+                key={c.id}
+                href={`/categories/${c.slug}`}
+                className="group overflow-hidden rounded-2xl bg-white ring-1 ring-[var(--nm-line)] transition hover:ring-[var(--nm-accent)]/40"
+              >
+                <div className="relative aspect-[4/3] overflow-hidden bg-[var(--nm-soft)]">
+                  <Image
+                    src={image}
+                    alt={c.name}
+                    fill
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                    className="object-cover transition duration-500 group-hover:scale-[1.03]"
+                  />
+                </div>
+                <div className="px-4 py-3">
+                  <p className="font-semibold text-[var(--nm-ink)]">{c.name}</p>
+                  <p className="mt-0.5 text-xs text-[var(--nm-muted)]">Shop category</p>
+                </div>
+              </Link>
+            );
+          })}
           {(home?.categories ?? []).length === 0 && (
-            <p className="text-sm text-[var(--nm-muted)]">Categories will appear once a branch is selected.</p>
+            <p className="col-span-full text-sm text-[var(--nm-muted)]">
+              Categories will appear once a branch is selected.
+            </p>
           )}
         </div>
       </section>
@@ -162,15 +177,7 @@ function ProductRail({
   products,
 }: {
   title: string;
-  products: Array<{
-    productId?: string;
-    variantId?: string;
-    name: string;
-    slug: string;
-    price: number;
-    salePrice: number | null;
-    images: string[];
-  }>;
+  products: HomeProduct[];
 }) {
   return (
     <section className="mx-auto max-w-6xl px-4 py-10">
@@ -189,7 +196,7 @@ function ProductRail({
             key={p.slug}
             product={{
               ...p,
-              inStock: true,
+              inStock: p.inStock !== false,
             }}
           />
         ))}

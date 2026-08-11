@@ -13,7 +13,7 @@ import type { OrderStatus } from '@prisma/client';
 import argon2 from 'argon2';
 import { ALL_PERMISSIONS, PERMISSIONS, SYSTEM_ROLES } from '@repo/types';
 import { BRANCHES, CATEGORIES, PRODUCTS, CUSTOMERS } from './data';
-import { CATEGORY_IMAGES } from './product-images';
+import { CATEGORY_IMAGES, imageForBrand } from './product-images';
 
 const prisma = new PrismaClient();
 
@@ -170,17 +170,18 @@ async function seedBrands() {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
+    const image = imageForBrand(slug);
     const brand = await prisma.brand.upsert({
       where: { slug },
       create: {
         name,
         slug,
-        image: `https://picsum.photos/seed/brand-${slug}/640/480`,
+        image,
         sortOrder: i,
         isVisible: true,
         allBranches: true,
       },
-      update: { name },
+      update: { name, image },
     });
     await prisma.product.updateMany({
       where: { brand: name, brandId: null },

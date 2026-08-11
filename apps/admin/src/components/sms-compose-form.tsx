@@ -53,15 +53,9 @@ export function SmsComposeForm({
 
   useEffect(() => {
     let cancelled = false;
-    function readCookie(name: string): string | null {
-      const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-      return match?.[1] ? decodeURIComponent(match[1]) : null;
-    }
     async function loadGemini() {
       try {
-        const token = readCookie('admin_session');
         const res = await fetch(`${API_URL}/api/v1/sms/gemini-status`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
           credentials: 'include',
         });
         if (!res.ok) return;

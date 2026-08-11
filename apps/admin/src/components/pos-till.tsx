@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { formatMoney } from '@repo/types';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, cn } from '@repo/ui';
 import { API_URL, ApiError } from '@/lib/api';
+import { adminPath } from '@/lib/admin-path';
 
 type CartLine = {
   productId: string;
@@ -264,7 +265,10 @@ export function PosTill({
         const session = await posFetch<TerminalSession>(`/pos/terminal/${result.terminalSessionId}`);
         setTerminal(session);
         if (result.terminalDisplayPath) {
-          window.open(result.terminalDisplayPath, 'pos-terminal', 'noopener,noreferrer,width=480,height=720');
+          const path = result.terminalDisplayPath.startsWith('http')
+            ? result.terminalDisplayPath
+            : adminPath(result.terminalDisplayPath);
+          window.open(path, 'pos-terminal', 'noopener,noreferrer,width=480,height=720');
         }
       }
       setStatusMsg('Amount sent to POS machine — waiting for card…');

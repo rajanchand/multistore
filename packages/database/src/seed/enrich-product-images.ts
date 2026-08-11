@@ -23,8 +23,9 @@ const MODEL = (process.env.GEMINI_IMAGE_MODEL?.trim() || 'gemini-2.5-flash-image
 const STOREFRONT_PUBLIC =
   process.env.STOREFRONT_PUBLIC_DIR?.trim() ||
   path.resolve(__dirname, '../../../../apps/storefront/public/product-images');
+/** Relative paths work with Next Image locally; override for CDN deploys. */
 const PUBLIC_BASE =
-  process.env.STOREFRONT_PUBLIC_URL?.replace(/\/$/, '') || 'http://localhost:3000';
+  process.env.STOREFRONT_PUBLIC_URL?.replace(/\/$/, '') || '/product-images';
 
 type GeminiPart = {
   text?: string;
@@ -108,11 +109,13 @@ async function main() {
       const file = `${product.slug}.png`;
       const abs = path.join(STOREFRONT_PUBLIC, file);
       await writeFile(abs, buf);
-      const url = `${PUBLIC_BASE}/product-images/${file}`;
-      const secondary = `${PUBLIC_BASE}/product-images/${file}`;
+      const url =
+        PUBLIC_BASE === '/product-images' || PUBLIC_BASE.endsWith('/product-images')
+          ? `${PUBLIC_BASE.replace(/\/$/, '')}/${file}`
+          : `${PUBLIC_BASE}/product-images/${file}`;
       await prisma.product.update({
         where: { id: product.id },
-        data: { images: [url, secondary] },
+        data: { images: [url] },
       });
       console.log(`ok (${Math.round(buf.length / 1024)}KB)`);
       ok += 1;

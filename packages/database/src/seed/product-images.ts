@@ -147,14 +147,34 @@ export const CATEGORY_IMAGES: Record<string, string> = {
   'health-beauty': u('photo-1556228578-0d85b1a4d571', 1200),
 };
 
+/** Stable Unsplash grocery fallbacks when a SKU is not in PRODUCT_IMAGES. */
+const FALLBACK_GROCERY = [
+  u('photo-1542838132-92c53300491e'),
+  u('photo-1604719312566-8912e9227c6a'),
+  u('photo-1578916171728-46686eac8d58'),
+  u('photo-1581006852262-e4307cf6283a'),
+  u('photo-1556912173-46c336c7fd55'),
+  u('photo-1486297678162-eb2a19b0a32d'),
+];
+
+function hashSeed(seed: string): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i += 1) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return h;
+}
+
 export function imagesForProduct(slug: string, fallbackSeed: string): string[] {
   const mapped = PRODUCT_IMAGES[slug];
   if (mapped?.length) return mapped;
-  const seed = encodeURIComponent(fallbackSeed);
-  return [
-    `https://picsum.photos/seed/${seed}/1400/1400`,
-    `https://picsum.photos/seed/${seed}-b/1400/1400`,
-  ];
+  const i = hashSeed(fallbackSeed || slug) % FALLBACK_GROCERY.length;
+  const j = (i + 1) % FALLBACK_GROCERY.length;
+  return [FALLBACK_GROCERY[i]!, FALLBACK_GROCERY[j]!];
+}
+
+/** Brand tile imagery — avoid picsum (redirects / unreliable with Next Image). */
+export function imageForBrand(slug: string): string {
+  const i = hashSeed(slug) % FALLBACK_GROCERY.length;
+  return FALLBACK_GROCERY[i]!;
 }
 
 /** Prompt used by Gemini image enrichment for a catalogue SKU. */

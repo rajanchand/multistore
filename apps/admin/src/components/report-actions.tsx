@@ -14,11 +14,6 @@ type Recipient = {
   branches: Array<{ id: string; name: string; code: string }>;
 };
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 export function ReportActions({
   kind,
   range = '30d',
@@ -30,6 +25,7 @@ export function ReportActions({
 }) {
   const [open, setOpen] = useState(false);
   const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [recipientsLoaded, setRecipientsLoaded] = useState(false);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [extraEmails, setExtraEmails] = useState('');
   const [note, setNote] = useState('');
@@ -48,10 +44,9 @@ export function ReportActions({
 
   useEffect(() => {
     if (!open) return;
-    const token = readCookie('admin_session');
+    setRecipientsLoaded(false);
     fetch(`${API_URL}/api/v1/reports/recipients`, {
       credentials: 'include',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then(async (res) => {
         if (!res.ok) throw new Error('Failed to load staff list');
@@ -66,7 +61,8 @@ export function ReportActions({
         );
         setSelected(managers);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load recipients'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load recipients'))
+      .finally(() => setRecipientsLoaded(true));
   }, [open]);
 
   async function downloadPdf() {
@@ -74,10 +70,8 @@ export function ReportActions({
     setError(null);
     setMessage(null);
     try {
-      const token = readCookie('admin_session');
       const res = await fetch(`${API_URL}/api/v1/reports/${kind}/pdf${query}`, {
         credentials: 'include',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -118,13 +112,11 @@ export function ReportActions({
       return;
     }
     try {
-      const token = readCookie('admin_session');
       const res = await fetch(`${API_URL}/api/v1/reports/${kind}/send`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           range: kind === 'inventory' ? undefined : range,
@@ -162,15 +154,20 @@ export function ReportActions({
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       {open && (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-4">
+        <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div>
             <p className="text-sm font-medium">Staff & managers</p>
             <p className="text-xs text-muted-foreground">
               Select people to email this report in one click. Managers are pre-selected.
             </p>
             <div className="mt-3 max-h-48 space-y-2 overflow-y-auto">
-              {recipients.length === 0 && (
+              {!recipientsLoaded && (
                 <p className="text-sm text-muted-foreground">Loading staff…</p>
+              )}
+              {recipientsLoaded && recipients.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No staff with email found. Add addresses below.
+                </p>
               )}
               {recipients.map((r) => (
                 <label key={r.id} className="flex items-start gap-2 text-sm">

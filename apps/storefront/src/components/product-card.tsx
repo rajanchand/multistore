@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { formatMoney } from '@repo/types';
 import { AddToCartButton } from '@/components/add-to-cart-button';
+import { primaryProductImage } from '@/lib/product-image';
 
 export function ProductCard({
   product,
@@ -18,10 +19,7 @@ export function ProductCard({
     inStock?: boolean;
   };
 }) {
-  const src =
-    Array.isArray(product.images) && product.images[0]
-      ? product.images[0]
-      : 'https://placehold.co/800x800/f4f6f8/111111?text=Neighbourhood';
+  const src = primaryProductImage(product.images);
   const isRemote = src.startsWith('http');
   const canQuickAdd = Boolean(product.productId && product.variantId && product.inStock !== false);
 
@@ -36,7 +34,7 @@ export function ProductCard({
               fill
               sizes="(max-width: 768px) 50vw, 25vw"
               className="object-contain p-3 transition duration-500 ease-out group-hover:scale-[1.03]"
-              unoptimized={src.includes('placehold.co') || src.startsWith('data:')}
+              unoptimized={src.startsWith('data:')}
             />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
@@ -49,6 +47,11 @@ export function ProductCard({
           {product.salePrice != null && (
             <span className="absolute left-3 top-3 rounded-md bg-[var(--nm-highlight)] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-black">
               Sale
+            </span>
+          )}
+          {product.inStock === false && (
+            <span className="absolute bottom-3 left-3 rounded-md bg-black/70 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+              Out of stock
             </span>
           )}
         </div>

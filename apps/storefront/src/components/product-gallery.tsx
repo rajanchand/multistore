@@ -3,13 +3,13 @@
 import Image from 'next/image';
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import { PRODUCT_IMAGE_FALLBACK } from '@/lib/product-image';
 
 export function ProductGallery({ images, alt }: { images: string[]; alt: string }) {
-  const fallback = 'https://placehold.co/800x800/e7f4ef/0f7a63?text=Neighbourhood';
-  const list = images.length > 0 ? images : [fallback];
+  const list = images.length > 0 ? images : [PRODUCT_IMAGE_FALLBACK];
   const [active, setActive] = useState(0);
   const [lightbox, setLightbox] = useState(false);
-  const src = list[active] ?? list[0] ?? fallback;
+  const src = list[active] ?? list[0] ?? PRODUCT_IMAGE_FALLBACK;
   const remote = src.startsWith('http');
 
   return (
@@ -28,7 +28,7 @@ export function ProductGallery({ images, alt }: { images: string[]; alt: string 
             priority
             sizes="(max-width: 1024px) 100vw, 50vw"
             className="object-contain p-6"
-            unoptimized={src.includes('placehold.co') || src.startsWith('data:')}
+            unoptimized={src.startsWith('data:')}
           />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
