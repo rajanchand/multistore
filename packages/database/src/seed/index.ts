@@ -1103,6 +1103,7 @@ async function seedStoreSettingsAndPlugins() {
 
 async function main() {
   console.log('Seeding database (development data)...');
+  await prisma.$executeRawUnsafe(`CREATE SEQUENCE IF NOT EXISTS order_number_seq`);
   await seedPermissionsAndRoles();
   await seedBranches();
   await seedUsers();

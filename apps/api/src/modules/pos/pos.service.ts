@@ -16,6 +16,7 @@ import { BranchAccessService } from '../../common/services/branch-access.service
 import { Errors } from '../../common/errors';
 import { REDIS } from '../../redis/redis.module';
 import type { AuthenticatedUser, RequestContext } from '../../common/auth-context';
+import { ensureOrderNumberSequence, nextOrderNumber } from '../../common/order-number';
 
 const WALK_IN_EMAIL = 'walk-in@pos.local';
 const TERMINAL_TTL_SEC = 15 * 60;
@@ -164,6 +165,7 @@ export class PosService {
 
   async createSale(user: AuthenticatedUser, input: PosSaleInput, ctx: RequestContext) {
     this.branchAccess.assertCanAccess(user, input.branchId);
+    await ensureOrderNumberSequence(this.prisma);
 
     const branch = await this.prisma.branch.findFirst({
       where: { id: input.branchId, deletedAt: null, isActive: true },
@@ -399,10 +401,7 @@ export class PosService {
       params;
 
     const order = await this.prisma.$transaction(async (tx) => {
-      const seqRows = await tx.$queryRaw<Array<{ n: bigint | number }>>`
-        SELECT nextval('order_number_seq') AS n
-      `;
-      const orderNumber = `ORD-${String(Number(seqRows[0]?.n ?? 0)).padStart(6, '0')}`;
+      const orderNumber = await nextOrderNumber(tx);
 
       for (const line of lines) {
         const reserved = await this.inventory.reserveWithinTx(tx, {
@@ -530,10 +529,7 @@ export class PosService {
     const sessionId = randomUUID();
 
     const order = await this.prisma.$transaction(async (tx) => {
-      const seqRows = await tx.$queryRaw<Array<{ n: bigint | number }>>`
-        SELECT nextval('order_number_seq') AS n
-      `;
-      const orderNumber = `ORD-${String(Number(seqRows[0]?.n ?? 0)).padStart(6, '0')}`;
+      const orderNumber = await nextOrderNumber(tx);
 
       for (const line of lines) {
         const reserved = await this.inventory.reserveWithinTx(tx, {

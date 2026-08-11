@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, HttpException } from '@nestjs/common';
 import type { Prisma } from '@repo/database';
 import type { CheckoutInput } from '@repo/validation';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -10,6 +10,7 @@ import { PricingService } from '../promotions/pricing.service';
 import { PAYMENT_PROVIDER, type PaymentProvider } from '../payments/payment-provider.interface';
 import { Errors } from '../../common/errors';
 import type { AuthenticatedCustomer } from '../../common/auth-context';
+import { ensureOrderNumberSequence, nextOrderNumber } from '../../common/order-number';
 
 const RESERVATION_TTL_MS = 15 * 60 * 1000; // 15 minutes to complete payment.
 
@@ -36,6 +37,8 @@ export class CheckoutService {
   ) {}
 
   async checkout(customer: AuthenticatedCustomer, cartToken: string | undefined, input: CheckoutInput) {
+    await ensureOrderNumberSequence(this.prisma);
+
     const cart = await this.carts.requireCart(cartToken);
     if (cart.id !== input.cartId) throw Errors.notFound('Cart');
     await this.carts.attachCustomer(cart, customer.id);
@@ -83,11 +86,7 @@ export class CheckoutService {
     // Atomic: reserve stock + create order. Conditional UPDATEs prevent oversell.
     const order = await this.prisma.$transaction(async (tx) => {
       // Sequence avoids table-wide count() contention under concurrent checkouts.
-      const seqRows = await tx.$queryRaw<Array<{ n: bigint | number }>>`
-        SELECT nextval('order_number_seq') AS n
-      `;
-      const seq = Number(seqRows[0]?.n ?? 0);
-      const orderNumber = `ORD-${String(seq).padStart(6, '0')}`;
+      const orderNumber = await nextOrderNumber(tx);
 
       for (const item of view.items) {
         const reserved = await this.inventory.reserveWithinTx(tx, {
@@ -188,7 +187,12 @@ export class CheckoutService {
     } catch (error) {
       this.logger.error(`Payment creation failed for ${order.orderNumber}: ${String(error)}`);
       await this.releaseOrder(order.id, 'Payment provider error');
-      throw error;
+      if (error instanceof HttpException) throw error;
+      const message =
+        error instanceof Error && error.message
+          ? `Payment could not be started: ${error.message}`
+          : 'Payment could not be started. Check Stripe configuration and try again.';
+      throw Errors.badRequest('PAYMENT_CREATE_FAILED', message);
     }
 
     await this.prisma.payment.create({
