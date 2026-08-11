@@ -28,17 +28,20 @@ Do **not** commit production passwords. On the VPS, change the Super Admin passw
 
 ## Customers
 
-| Email |
-| --- |
-| alice@example.dev |
-| bob@example.dev |
-| carol@example.dev |
-| dan@example.dev |
-| erin@example.dev |
-| frank@example.dev |
-| grace@example.dev |
-| henry@example.dev |
-| walk-in@pos.local (synthetic — used by POS / cash till sales) |
+Password: `DevPassword123!`
+
+| Email | Notes |
+| --- | --- |
+| demo@dev.local | **Primary demo shopper** — one-click on Account / Checkout |
+| alice@example.dev | Seeded customer |
+| bob@example.dev | |
+| carol@example.dev | |
+| dan@example.dev | |
+| erin@example.dev | |
+| frank@example.dev | |
+| grace@example.dev | |
+| henry@example.dev | |
+| walk-in@pos.local | Synthetic — used by POS / cash till sales |
 
 ## POS till
 

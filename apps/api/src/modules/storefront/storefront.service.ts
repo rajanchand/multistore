@@ -414,7 +414,7 @@ export class StorefrontService {
       ]);
 
       const bestSellerVariantIds = bestSellerRows.map((r) => r.variantId);
-      const bestSellers =
+      const bestSellerRows_bp =
         bestSellerVariantIds.length > 0
           ? await this.prisma.branchProduct.findMany({
               where: {
@@ -431,21 +431,36 @@ export class StorefrontService {
             })
           : [];
 
+      const bestSellersMapped =
+        bestSellerRows_bp.length > 0
+          ? bestSellerRows_bp.map((bp) => ({
+              productId: bp.productId,
+              variantId: bp.variantId,
+              name: bp.product.name,
+              slug: bp.product.slug,
+              brand: bp.product.brand,
+              images: bp.product.images,
+              price: bp.sellingPrice,
+              salePrice: bp.salePrice,
+            }))
+          : // Fresh installs often have no paid orders yet — fall back to newest catalogue items.
+            newArrivals.items.map((item) => ({
+              productId: item.productId,
+              variantId: item.variantId,
+              name: item.name,
+              slug: item.slug,
+              brand: item.brand,
+              images: item.images,
+              price: item.price,
+              salePrice: item.salePrice,
+            }));
+
       return {
         banners,
         categories: categories.filter((c) => !c.parentId),
         brands,
         newArrivals: newArrivals.items,
-        bestSellers: bestSellers.map((bp) => ({
-          productId: bp.productId,
-          variantId: bp.variantId,
-          name: bp.product.name,
-          slug: bp.product.slug,
-          brand: bp.product.brand,
-          images: bp.product.images,
-          price: bp.sellingPrice,
-          salePrice: bp.salePrice,
-        })),
+        bestSellers: bestSellersMapped,
       };
     });
   }

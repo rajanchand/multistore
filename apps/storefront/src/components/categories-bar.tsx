@@ -1,9 +1,12 @@
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { storeApi } from '@/lib/api';
 
 export async function CategoriesBar() {
+  const branchId = cookies().get('preferred_branch')?.value;
+  const qs = branchId ? `?branchId=${encodeURIComponent(branchId)}` : '';
   const categories = await storeApi<Array<{ id: string; name: string; slug: string }>>(
-    '/storefront/categories',
+    `/storefront/categories${qs}`,
     { next: { revalidate: 60 } },
   ).catch(() => [] as Array<{ id: string; name: string; slug: string }>);
 

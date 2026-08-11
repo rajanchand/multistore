@@ -32,7 +32,7 @@ Most seed passwords: `DevPassword123!` (override Super Admin with `SEED_SUPERADM
 
 - Super Admin: username `rajan.chand` (default)
 - Glasgow Manager: `manager.glasgow@dev.local`
-- Customer: `alice@example.dev`
+- Customer: `demo@dev.local` (primary demo checkout) / `alice@example.dev`
 
 ## Phase 1 — Project Foundation
 

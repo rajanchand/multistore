@@ -39,6 +39,7 @@ Most seeded passwords: `DevPassword123!` (development only). Override Super Admi
 | Super Admin | `rajan.chand` (default username) |
 | Glasgow Manager | `manager.glasgow@dev.local` |
 | Edinburgh Manager | `manager.edinburgh@dev.local` |
+| Demo shopper (checkout) | `demo@dev.local` |
 | Customer | `alice@example.dev` |
 
 See `packages/database/src/seed/dev-credentials.md`.
