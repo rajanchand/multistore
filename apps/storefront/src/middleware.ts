@@ -5,6 +5,7 @@ const BRANCH_COOKIE = 'preferred_branch';
 
 const PUBLIC_PREFIXES = [
   '/select-location',
+  '/api',
   '/privacy',
   '/terms',
   '/returns',

@@ -6,15 +6,20 @@ CREATE INDEX IF NOT EXISTS "Customer_preferredBranchId_idx" ON "Customer"("prefe
 -- Contiguous order numbers without SELECT count(*) under checkout load
 CREATE SEQUENCE IF NOT EXISTS order_number_seq;
 
--- Align sequence with existing orders so numbers do not collide after deploy
+-- Align sequence with existing orders so numbers do not collide after deploy.
+-- Postgres setval() rejects 0 (sequence bounds start at 1); on an empty Order
+-- table MAX is NULL — fall back via GREATEST(..., 1) so fresh CI DBs migrate cleanly.
 SELECT setval(
   'order_number_seq',
-  COALESCE(
-    (
-      SELECT MAX(NULLIF(regexp_replace("orderNumber", '\D', '', 'g'), '')::bigint)
-      FROM "Order"
+  GREATEST(
+    COALESCE(
+      (
+        SELECT MAX(NULLIF(regexp_replace("orderNumber", '\D', '', 'g'), '')::bigint)
+        FROM "Order"
+      ),
+      0
     ),
-    0
+    1
   ),
   true
 );

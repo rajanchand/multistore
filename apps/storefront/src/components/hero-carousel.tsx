@@ -169,7 +169,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={desktopSrc}
-                  alt=""
+                  alt={slide.title}
                   className={[
                     'absolute inset-0 h-full w-full object-cover',
                     active && !reducedMotion ? 'nm-hero-media' : '',

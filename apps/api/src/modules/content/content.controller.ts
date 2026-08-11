@@ -171,6 +171,11 @@ export class ContentController {
     return this.settings.getPaymentIntegrationStatus();
   }
 
+  @Get('settings/gemini/integration')
+  geminiIntegrationStatus() {
+    return this.settings.getGeminiIntegrationStatus();
+  }
+
   @Get('plugins')
   listPlugins(
     @Query('includeDisabled') includeDisabled?: string,

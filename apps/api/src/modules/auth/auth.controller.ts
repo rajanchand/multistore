@@ -69,7 +69,13 @@ export class AuthController {
 
   @Post('login')
   @UseGuards(ThrottlerGuard)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  // Keep prod tight; allow more attempts in local/dev while iterating on login.
+  @Throttle({
+    default: {
+      limit: process.env.NODE_ENV === 'production' ? 10 : 60,
+      ttl: 60_000,
+    },
+  })
   @HttpCode(200)
   async login(
     @Body(new ZodValidationPipe(loginSchema)) body: LoginInput,

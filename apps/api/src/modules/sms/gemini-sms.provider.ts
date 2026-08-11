@@ -1,3 +1,5 @@
+import { loadServerEnv } from '@repo/config';
+
 export type SmsGenerateContext = {
   storeName: string;
   mode: 'single' | 'bulk';
@@ -61,8 +63,9 @@ export function templateSmsBody(ctx: SmsGenerateContext): string {
  * Env: GEMINI_API_KEY (required for live AI), GEMINI_MODEL (optional).
  */
 export async function generateSmsWithGemini(ctx: SmsGenerateContext): Promise<SmsGenerateResult> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  const model = (process.env.GEMINI_MODEL?.trim() || 'gemini-2.0-flash').replace(/^models\//, '');
+  const env = loadServerEnv();
+  const apiKey = env.GEMINI_API_KEY?.trim();
+  const model = (env.GEMINI_MODEL?.trim() || 'gemini-2.0-flash').replace(/^models\//, '');
 
   if (!apiKey) {
     return { body: templateSmsBody(ctx), provider: 'template' };

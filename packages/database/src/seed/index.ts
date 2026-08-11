@@ -13,6 +13,7 @@ import type { OrderStatus } from '@prisma/client';
 import argon2 from 'argon2';
 import { ALL_PERMISSIONS, PERMISSIONS, SYSTEM_ROLES } from '@repo/types';
 import { BRANCHES, CATEGORIES, PRODUCTS, CUSTOMERS } from './data';
+import { CATEGORY_IMAGES, imageForBrand } from './product-images';
 
 const prisma = new PrismaClient();
 
@@ -146,7 +147,9 @@ async function seedUsers() {
 
 async function seedCategories() {
   for (const c of CATEGORIES) {
-    const image = `https://picsum.photos/seed/cat-${c.slug}/640/480`;
+    const image =
+      CATEGORY_IMAGES[c.slug] ??
+      `https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=960&h=640&q=80`;
     await prisma.category.upsert({
       where: { slug: c.slug },
       create: { ...c, image, isVisible: true, allBranches: true },
@@ -167,17 +170,18 @@ async function seedBrands() {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
+    const image = imageForBrand(slug);
     const brand = await prisma.brand.upsert({
       where: { slug },
       create: {
         name,
         slug,
-        image: `https://picsum.photos/seed/brand-${slug}/640/480`,
+        image,
         sortOrder: i,
         isVisible: true,
         allBranches: true,
       },
-      update: { name },
+      update: { name, image },
     });
     await prisma.product.updateMany({
       where: { brand: name, brandId: null },
@@ -187,6 +191,72 @@ async function seedBrands() {
   console.log(`Seeded ${names.length} brands from product catalogue`);
 }
 
+async function ensureProductCategories(
+  productId: string,
+  categorySlugs: string[],
+  catBySlug: Map<string, string>,
+) {
+  const wanted = categorySlugs.filter((s) => catBySlug.has(s)).map((s) => catBySlug.get(s)!);
+  const existing = await prisma.productCategory.findMany({ where: { productId } });
+  const existingIds = new Set(existing.map((c) => c.categoryId));
+  for (const categoryId of wanted) {
+    if (existingIds.has(categoryId)) continue;
+    await prisma.productCategory.create({ data: { productId, categoryId } });
+  }
+}
+
+async function ensureBranchCatalogue(
+  productId: string,
+  variantId: string,
+  basePrice: number,
+  priceDelta: number,
+  productCount: number,
+  branches: Array<{ id: string; code: string }>,
+) {
+  for (const [bi, branch] of branches.entries()) {
+    const priceVariation = [0, 10, 0, 6, 20][bi % 5] ?? 0;
+    const hidden = branch.code === 'PAI' && productCount % 7 === 0;
+    const sellingPrice = basePrice + priceDelta + priceVariation;
+    const salePrice = productCount % 5 === 0 ? Math.round((basePrice + priceDelta) * 0.85) : null;
+    await prisma.branchProduct.upsert({
+      where: { branchId_variantId: { branchId: branch.id, variantId } },
+      create: {
+        branchId: branch.id,
+        productId,
+        variantId,
+        sellingPrice,
+        salePrice,
+        isVisible: !hidden,
+        isAvailable: true,
+      },
+      update: {
+        productId,
+        sellingPrice,
+        salePrice,
+        isVisible: !hidden,
+        isAvailable: true,
+      },
+    });
+    const available = hidden ? 0 : ((productCount * 13 + bi * 29) % 180) + 5;
+    await prisma.inventory.upsert({
+      where: { branchId_variantId: { branchId: branch.id, variantId } },
+      create: {
+        branchId: branch.id,
+        productId,
+        variantId,
+        available,
+        reserved: 0,
+        lowStockThreshold: 10,
+      },
+      update: {
+        productId,
+        available,
+        lowStockThreshold: 10,
+      },
+    });
+  }
+}
+
 async function seedProducts() {
   const categories = await prisma.category.findMany();
   const catBySlug = new Map(categories.map((c) => [c.slug, c.id]));
@@ -194,94 +264,98 @@ async function seedProducts() {
   const superAdmin = await prisma.user.findUnique({ where: { email: 'superadmin@dev.local' } });
 
   let productCount = 0;
-  let imagesUpdated = 0;
+  let created = 0;
+  let updated = 0;
   for (const p of PRODUCTS) {
-    const existing = await prisma.product.findUnique({ where: { sku: p.sku } });
-    if (existing) {
-      await prisma.product.update({
-        where: { id: existing.id },
-        data: { images: p.images },
+    let product = await prisma.product.findUnique({ where: { sku: p.sku } });
+    if (product) {
+      product = await prisma.product.update({
+        where: { id: product.id },
+        data: {
+          barcode: p.barcode,
+          name: p.name,
+          slug: p.slug,
+          shortDescription: p.shortDescription,
+          description: p.description,
+          brand: p.brand,
+          status: 'ACTIVE',
+          taxClass: p.taxClass ?? 'STANDARD',
+          images: p.images,
+          tags: p.tags,
+          seoTitle: p.name,
+          seoDescription: p.shortDescription,
+          deletedAt: null,
+        },
       });
-      imagesUpdated += 1;
-      continue;
+      updated += 1;
+    } else {
+      product = await prisma.product.create({
+        data: {
+          sku: p.sku,
+          barcode: p.barcode,
+          name: p.name,
+          slug: p.slug,
+          shortDescription: p.shortDescription,
+          description: p.description,
+          brand: p.brand,
+          status: 'ACTIVE',
+          taxClass: p.taxClass ?? 'STANDARD',
+          images: p.images,
+          tags: p.tags,
+          seoTitle: p.name,
+          seoDescription: p.shortDescription,
+          createdById: superAdmin?.id,
+        },
+      });
+      created += 1;
     }
 
-    const product = await prisma.product.create({
-      data: {
-        sku: p.sku,
-        barcode: p.barcode,
-        name: p.name,
-        slug: p.slug,
-        shortDescription: p.shortDescription,
-        description: p.description,
-        brand: p.brand,
-        status: 'ACTIVE',
-        taxClass: p.taxClass ?? 'STANDARD',
-        images: p.images,
-        tags: p.tags,
-        seoTitle: p.name,
-        seoDescription: p.shortDescription,
-        createdById: superAdmin?.id,
-        categories: {
-          create: p.categorySlugs
-            .filter((s) => catBySlug.has(s))
-            .map((s) => ({ categoryId: catBySlug.get(s)! })),
-        },
-      },
-    });
+    await ensureProductCategories(product.id, p.categorySlugs, catBySlug);
 
     const variantSpecs =
       p.variants.length > 0
         ? p.variants
         : [{ suffix: '', name: p.name, attributes: {}, priceDelta: 0, isDefault: true }];
 
-    for (const v of variantSpecs) {
-      const variant = await prisma.productVariant.create({
-        data: {
+    for (const [vi, v] of variantSpecs.entries()) {
+      const variantSku = v.suffix ? `${p.sku}-${v.suffix}` : p.sku;
+      const isDefault = v.isDefault ?? (p.variants.length === 0 || vi === 0);
+      const variant = await prisma.productVariant.upsert({
+        where: { sku: variantSku },
+        create: {
           productId: product.id,
-          sku: v.suffix ? `${p.sku}-${v.suffix}` : p.sku,
+          sku: variantSku,
           name: v.name,
           attributes: v.attributes,
           costPrice: Math.round(p.basePrice * 0.6),
           defaultPrice: p.basePrice + (v.priceDelta ?? 0),
-          isDefault: v.isDefault ?? false,
+          isDefault,
           status: 'ACTIVE',
+        },
+        update: {
+          productId: product.id,
+          name: v.name,
+          attributes: v.attributes,
+          costPrice: Math.round(p.basePrice * 0.6),
+          defaultPrice: p.basePrice + (v.priceDelta ?? 0),
+          isDefault,
+          status: 'ACTIVE',
+          deletedAt: null,
         },
       });
 
-      // Branch configs: price varies slightly per branch; Paisley hides a few products.
-      for (const [bi, branch] of branches.entries()) {
-        const priceVariation = [0, 10, 0, 6, 20][bi % 5] ?? 0;
-        const hidden = branch.code === 'PAI' && productCount % 7 === 0;
-        await prisma.branchProduct.create({
-          data: {
-            branchId: branch.id,
-            productId: product.id,
-            variantId: variant.id,
-            sellingPrice: p.basePrice + (v.priceDelta ?? 0) + priceVariation,
-            salePrice: productCount % 5 === 0 ? Math.round((p.basePrice + (v.priceDelta ?? 0)) * 0.85) : null,
-            isVisible: !hidden,
-            isAvailable: true,
-          },
-        });
-        const available = hidden ? 0 : ((productCount * 13 + bi * 29) % 180) + 5;
-        await prisma.inventory.create({
-          data: {
-            branchId: branch.id,
-            productId: product.id,
-            variantId: variant.id,
-            available,
-            reserved: 0,
-            lowStockThreshold: 10,
-          },
-        });
-      }
+      await ensureBranchCatalogue(
+        product.id,
+        variant.id,
+        p.basePrice,
+        v.priceDelta ?? 0,
+        productCount,
+        branches,
+      );
     }
     productCount += 1;
   }
-  console.log(
-    `Seeded ${productCount} products; refreshed images on ${imagesUpdated} existing products`,
-  );
+  console.log(`Seeded catalogue: ${created} created, ${updated} updated (${productCount} total)`);
 }
 
 async function seedCustomers() {
@@ -297,8 +371,19 @@ async function seedCustomers() {
         phone: c.phone,
         emailVerifiedAt: new Date(),
         marketingOptIn: c.marketingOptIn,
+        isActive: true,
       },
-      update: {},
+      update: {
+        passwordHash,
+        firstName: c.firstName,
+        lastName: c.lastName,
+        phone: c.phone,
+        emailVerifiedAt: new Date(),
+        marketingOptIn: c.marketingOptIn,
+        isActive: true,
+        lockedUntil: null,
+        failedLoginCount: 0,
+      },
     });
     if (c.address) {
       const hasAddress = await prisma.address.findFirst({ where: { customerId: customer.id } });
@@ -318,7 +403,7 @@ async function seedCustomers() {
       }
     }
   }
-  console.log(`Seeded ${CUSTOMERS.length} customers`);
+  console.log(`Seeded ${CUSTOMERS.length} customers (demo checkout: demo@dev.local / ${DEV_PASSWORD})`);
 }
 
 /** Deterministic pseudo-random for reproducible seed data. */
@@ -1022,6 +1107,7 @@ async function seedStoreSettingsAndPlugins() {
 
 async function main() {
   console.log('Seeding database (development data)...');
+  await prisma.$executeRawUnsafe(`CREATE SEQUENCE IF NOT EXISTS order_number_seq`);
   await seedPermissionsAndRoles();
   await seedBranches();
   await seedUsers();

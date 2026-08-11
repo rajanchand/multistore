@@ -45,6 +45,41 @@ export function SmsComposeForm({
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [genMeta, setGenMeta] = useState<string | null>(null);
+  const [geminiStatus, setGeminiStatus] = useState<{
+    configured: boolean;
+    smsModel?: string;
+    message?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadGemini() {
+      try {
+        const res = await fetch(`${API_URL}/api/v1/sms/gemini-status`, {
+          credentials: 'include',
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          configured?: boolean;
+          smsModel?: string;
+          message?: string;
+        };
+        if (!cancelled) {
+          setGeminiStatus({
+            configured: Boolean(data.configured),
+            smsModel: data.smsModel,
+            message: data.message,
+          });
+        }
+      } catch {
+        /* keep null — UI falls back to generic hint */
+      }
+    }
+    void loadGemini();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const selectedOffer = useMemo(
     () => offers.find((o) => o.id === promotionId) ?? null,
@@ -295,12 +330,34 @@ export function SmsComposeForm({
               required
               placeholder="Select an offer to auto-generate, or write your own…"
             />
-            <span className="flex justify-between text-xs text-muted-foreground">
-              <span>{genMeta ?? 'Uses Google Gemini when GEMINI_API_KEY is set on the API.'}</span>
+            <span className="flex justify-between gap-3 text-xs text-muted-foreground">
+              <span>
+                {genMeta ??
+                  (geminiStatus
+                    ? geminiStatus.configured
+                      ? `Gemini ready (${geminiStatus.smsModel}). Generate with AI uses the live model.`
+                      : 'Gemini key missing — using template fallback. Set GEMINI_API_KEY in API .env and restart.'
+                    : 'Uses Google Gemini when GEMINI_API_KEY is set on the API.')}
+              </span>
               <span>
                 {body.length}/1600
               </span>
             </span>
+            {geminiStatus && !geminiStatus.configured && (
+              <p className="rounded-md border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                Get a key at{' '}
+                <a
+                  className="font-medium underline"
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  aistudio.google.com/apikey
+                </a>
+                , add <code className="rounded bg-amber-100 px-1">GEMINI_API_KEY=…</code> to{' '}
+                <code className="rounded bg-amber-100 px-1">.env</code>, then restart the API.
+              </p>
+            )}
           </label>
 
           {error && <p className="sm:col-span-2 text-sm text-destructive">{error}</p>}

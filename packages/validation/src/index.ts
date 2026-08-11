@@ -9,3 +9,4 @@ export * from './pos';
 export * from './marketing';
 export * from './admin';
 export * from './content';
+export * from './reports';

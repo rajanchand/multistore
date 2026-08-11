@@ -127,7 +127,7 @@ export function ProductImageEditor({
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt="" className="aspect-square w-full object-cover" />
+              <img src={src} alt="" className="aspect-square w-full bg-white object-contain p-1" />
               <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-1 bg-gradient-to-b from-black/55 to-transparent p-1.5">
                 <span className="inline-flex items-center gap-0.5 rounded bg-black/40 px-1.5 py-0.5 text-[10px] text-white">
                   <GripVertical className="h-3 w-3" />

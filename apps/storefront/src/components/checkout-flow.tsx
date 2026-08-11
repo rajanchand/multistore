@@ -332,11 +332,16 @@ export function CheckoutFlow({ customer }: { customer: CustomerInfo }) {
 
         const cartToken = readCookie('cart_token');
         const cartRes = cartToken
-          ? await fetch(`${API_URL}/api/v1/carts/current`, {
-              credentials: 'include',
+          ? await fetch('/api/cart/current', {
+              credentials: 'same-origin',
               headers: { 'x-cart-token': cartToken },
+              cache: 'no-store',
             })
           : null;
+
+        if (cartRes && (cartRes.status === 404 || cartRes.status === 409 || cartRes.status === 410)) {
+          document.cookie = 'cart_token=; path=/; max-age=0; SameSite=Lax';
+        }
 
         if (!cartRes || !cartRes.ok) {
           if (!cancelled) setCart(null);

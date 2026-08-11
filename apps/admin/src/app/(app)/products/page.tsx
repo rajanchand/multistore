@@ -24,11 +24,15 @@ interface ProductList {
 export default async function ProductsPage() {
   const token = cookies().get('admin_session')?.value;
   const branchId = getSelectedBranchId();
+  let loadError: string | null = null;
   const data = await api<ProductList>(withBranchQuery('/products?pageSize=50', branchId), {
     token,
     cache: 'no-store',
     headers: token ? { Cookie: `admin_session=${token}` } : {},
-  }).catch(() => ({ items: [], total: 0 }));
+  }).catch((err) => {
+    loadError = err instanceof Error ? err.message : 'Failed to load products';
+    return { items: [], total: 0 } satisfies ProductList;
+  });
 
   return (
     <div className="space-y-6">
@@ -39,6 +43,9 @@ export default async function ProductsPage() {
             {data.total} products in the master catalogue
             {branchId ? ' · branch filter on' : ''}
           </p>
+          {loadError && (
+            <p className="mt-2 text-sm text-destructive">Could not load catalogue: {loadError}</p>
+          )}
           <p className="mt-2 text-sm">
             <Link className="text-primary hover:underline" href="/categories">
               Categories
@@ -59,6 +66,13 @@ export default async function ProductsPage() {
           <CardTitle>Catalogue</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
+          {data.items.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {loadError
+                ? 'Products could not be loaded. Check API connectivity and try again.'
+                : 'No products yet. Create a product to get started.'}
+            </p>
+          ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-muted-foreground">
@@ -78,16 +92,16 @@ export default async function ProductsPage() {
               {data.items.map((p) => (
                 <tr key={p.id} className="border-b last:border-0">
                   <td className="py-3">
-                    <div className="h-10 w-10 overflow-hidden rounded-md bg-muted">
+                    <div className="h-10 w-10 overflow-hidden rounded-md bg-white ring-1 ring-border">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={
                           Array.isArray(p.images) && p.images[0]
                             ? p.images[0]
-                            : 'https://placehold.co/80x80/e2e8f0/64748b?text=—'
+                            : 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=160&h=160&q=80'
                         }
                         alt=""
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain p-0.5"
                       />
                     </div>
                   </td>
@@ -116,6 +130,7 @@ export default async function ProductsPage() {
               ))}
             </tbody>
           </table>
+          )}
         </CardContent>
       </Card>
     </div>

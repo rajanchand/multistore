@@ -414,7 +414,7 @@ export class StorefrontService {
       ]);
 
       const bestSellerVariantIds = bestSellerRows.map((r) => r.variantId);
-      const bestSellers =
+      const bestSellerRows_bp =
         bestSellerVariantIds.length > 0
           ? await this.prisma.branchProduct.findMany({
               where: {
@@ -431,21 +431,57 @@ export class StorefrontService {
             })
           : [];
 
+      const bestSellersMapped =
+        bestSellerRows_bp.length > 0
+          ? await (async () => {
+              const stockRows = await this.prisma.inventory.findMany({
+                where: {
+                  branchId,
+                  variantId: { in: bestSellerRows_bp.map((bp) => bp.variantId) },
+                },
+                select: { variantId: true, available: true },
+              });
+              const stockByVariant = new Map(stockRows.map((s) => [s.variantId, s.available]));
+              return bestSellerRows_bp.map((bp) => {
+                const available = stockByVariant.get(bp.variantId) ?? 0;
+                return {
+                  productId: bp.productId,
+                  variantId: bp.variantId,
+                  name: bp.product.name,
+                  slug: bp.product.slug,
+                  brand: bp.product.brand,
+                  images: bp.product.images,
+                  price: bp.sellingPrice,
+                  salePrice: bp.salePrice,
+                  inStock: available > 0,
+                  stockLevel: levelOf(available),
+                  deliveryEnabled: bp.deliveryEnabled,
+                  clickCollectEnabled: bp.clickCollectEnabled,
+                };
+              });
+            })()
+          : // Fresh installs often have no paid orders yet — fall back to newest catalogue items.
+            newArrivals.items.map((item) => ({
+              productId: item.productId,
+              variantId: item.variantId,
+              name: item.name,
+              slug: item.slug,
+              brand: item.brand,
+              images: item.images,
+              price: item.price,
+              salePrice: item.salePrice,
+              inStock: item.inStock,
+              stockLevel: item.stockLevel,
+              deliveryEnabled: item.deliveryEnabled,
+              clickCollectEnabled: item.clickCollectEnabled,
+            }));
+
       return {
         banners,
         categories: categories.filter((c) => !c.parentId),
         brands,
         newArrivals: newArrivals.items,
-        bestSellers: bestSellers.map((bp) => ({
-          productId: bp.productId,
-          variantId: bp.variantId,
-          name: bp.product.name,
-          slug: bp.product.slug,
-          brand: bp.product.brand,
-          images: bp.product.images,
-          price: bp.sellingPrice,
-          salePrice: bp.salePrice,
-        })),
+        bestSellers: bestSellersMapped,
       };
     });
   }

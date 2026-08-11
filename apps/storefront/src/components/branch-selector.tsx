@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
-import { BRANCH_COOKIE, getPreferredBranchCookie, setPreferredBranchCookie } from '@/lib/branch-cookie';
+import { getPreferredBranchCookie, setPreferredBranchCookie } from '@/lib/branch-cookie';
+import { readCartToken } from '@/lib/cart-cookie';
+import { switchCartBranchViaProxy } from '@/lib/cart-api';
 
 interface Branch {
   id: string;
@@ -15,6 +17,7 @@ interface Branch {
 export function BranchSelector() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selected, setSelected] = useState('');
+  const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
     const current = getPreferredBranchCookie();
@@ -27,10 +30,21 @@ export function BranchSelector() {
       .catch(() => undefined);
   }, []);
 
-  function onChange(id: string) {
-    if (!id) return;
+  async function onChange(id: string) {
+    if (!id || id === selected || switching) return;
+    setSwitching(true);
     setSelected(id);
     setPreferredBranchCookie(id);
+
+    const cartToken = readCartToken();
+    if (cartToken) {
+      try {
+        await switchCartBranchViaProxy(cartToken, id);
+      } catch {
+        /* reload will still apply preferred_branch pricing on next cart create */
+      }
+    }
+
     window.dispatchEvent(new CustomEvent('branch-changed', { detail: { branchId: id } }));
     window.location.reload();
   }
@@ -51,7 +65,8 @@ export function BranchSelector() {
       aria-label="Select branch"
       className="h-11 max-w-[11rem] rounded-xl border border-[var(--nm-line)] bg-white px-2 text-sm font-medium text-[var(--nm-ink)]"
       value={selected}
-      onChange={(e) => onChange(e.target.value)}
+      disabled={switching}
+      onChange={(e) => void onChange(e.target.value)}
     >
       {branches.map((b) => (
         <option key={b.id} value={b.id}>
@@ -61,9 +76,3 @@ export function BranchSelector() {
     </select>
   );
 }
-
-export function getPreferredBranchId(): string | null {
-  return getPreferredBranchCookie();
-}
-
-export { BRANCH_COOKIE };

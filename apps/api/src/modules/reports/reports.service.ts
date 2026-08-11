@@ -1,9 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type OrderStatus } from '@repo/database';
+import type { ReportKind, SendReportInput } from '@repo/validation';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BranchAccessService } from '../../common/services/branch-access.service';
 import { AnalyticsService, type AnalyticsRange } from '../analytics/analytics.service';
-import type { AuthenticatedUser } from '../../common/auth-context';
+import { AuditService } from '../audit/audit.service';
+import { Errors } from '../../common/errors';
+import type { AuthenticatedUser, RequestContext } from '../../common/auth-context';
+import { buildReportPdf } from './report-pdf';
+import {
+  createEmailProviderFromEnv,
+  type EmailProvider,
+} from '../notifications/email-provider';
 
 const REVENUE_STATUSES: OrderStatus[] = [
   'PAID',
@@ -16,20 +24,32 @@ const REVENUE_STATUSES: OrderStatus[] = [
   'PARTIALLY_REFUNDED',
 ];
 
+const REPORT_RECIPIENT_ROLES = ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'MARKETING'] as const;
+
 @Injectable()
 export class ReportsService {
+  private emailProviderPromise: Promise<EmailProvider> | null = null;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly branchAccess: BranchAccessService,
     private readonly analytics: AnalyticsService,
+    private readonly audit: AuditService,
   ) {}
+
+  private emailProvider(): Promise<EmailProvider> {
+    if (!this.emailProviderPromise) {
+      this.emailProviderPromise = createEmailProviderFromEnv();
+    }
+    return this.emailProviderPromise;
+  }
 
   async hqSummary(user: AuthenticatedUser, range: AnalyticsRange) {
     const [overview, revenueByBranch, topProducts, inventory, orderStatus] = await Promise.all([
       this.analytics.overview(user, range),
       this.analytics.revenueByBranch(user, range),
       this.analytics.topProducts(user, range, 15),
-      this.inventoryReport(user),
+      this.inventoryReport(user, range.branchIds),
       this.ordersByStatus(user, range),
     ]);
     return {
@@ -101,8 +121,8 @@ export class ReportsService {
     };
   }
 
-  async inventoryReport(user: AuthenticatedUser) {
-    const branchIds = this.branchAccess.resolveScope(user);
+  async inventoryReport(user: AuthenticatedUser, requestedBranchIds?: string[]) {
+    const branchIds = this.branchAccess.resolveScope(user, requestedBranchIds);
     const where = branchIds ? { branchId: { in: branchIds } } : {};
     const [totals, byBranch, lowStockRows] = await Promise.all([
       this.prisma.inventory.aggregate({
@@ -163,6 +183,159 @@ export class ReportsService {
         lowStock: Number(r.lowstock),
       })),
       lowStock: lowStockRows,
+    };
+  }
+
+  async loadReport(
+    kind: ReportKind,
+    user: AuthenticatedUser,
+    range: AnalyticsRange,
+  ): Promise<Record<string, unknown>> {
+    switch (kind) {
+      case 'summary':
+        return this.hqSummary(user, range) as Promise<Record<string, unknown>>;
+      case 'sales':
+        return this.salesReport(user, range) as Promise<Record<string, unknown>>;
+      case 'orders':
+        return this.ordersReport(user, range) as Promise<Record<string, unknown>>;
+      case 'inventory':
+        return this.inventoryReport(user, range.branchIds) as Promise<Record<string, unknown>>;
+      default:
+        throw Errors.badRequest('INVALID_REPORT', 'Unknown report kind.');
+    }
+  }
+
+  async buildPdf(
+    kind: ReportKind,
+    user: AuthenticatedUser,
+    range: AnalyticsRange,
+    rangeKey?: string,
+    note?: string,
+  ) {
+    const payload = await this.loadReport(kind, user, range);
+    return buildReportPdf(kind, payload, { rangeKey, note });
+  }
+
+  async recipients(user: AuthenticatedUser) {
+    const scope = this.branchAccess.resolveScope(user);
+    const users = await this.prisma.user.findMany({
+      where: {
+        deletedAt: null,
+        isActive: true,
+        roles: { some: { role: { name: { in: [...REPORT_RECIPIENT_ROLES] } } } },
+        ...(user.isGlobal || !scope
+          ? {}
+          : {
+              OR: [
+                { isGlobal: true },
+                { branches: { some: { branchId: { in: scope } } } },
+              ],
+            }),
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        roles: { select: { role: { select: { name: true } } } },
+        branches: { select: { branch: { select: { id: true, name: true, code: true } } } },
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      take: 200,
+    });
+
+    return users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: `${u.firstName} ${u.lastName}`.trim(),
+      roles: u.roles.map((r) => r.role.name),
+      branches: u.branches.map((b) => b.branch),
+    }));
+  }
+
+  async sendReport(
+    kind: ReportKind,
+    user: AuthenticatedUser,
+    range: AnalyticsRange,
+    input: SendReportInput,
+    rangeKey: string,
+    ctx: RequestContext,
+  ) {
+    const staff =
+      input.userIds.length > 0
+        ? await this.prisma.user.findMany({
+            where: {
+              id: { in: input.userIds },
+              deletedAt: null,
+              isActive: true,
+            },
+            select: { id: true, email: true },
+          })
+        : [];
+
+    if (input.userIds.length > 0 && staff.length !== input.userIds.length) {
+      throw Errors.badRequest('INVALID_RECIPIENTS', 'One or more staff recipients were not found.');
+    }
+
+    const emails = [
+      ...new Set(
+        [...staff.map((s) => s.email.toLowerCase()), ...input.emails.map((e) => e.toLowerCase())].filter(
+          Boolean,
+        ),
+      ),
+    ];
+    if (emails.length === 0) {
+      throw Errors.badRequest('NO_RECIPIENTS', 'Provide at least one recipient email.');
+    }
+    if (emails.length > 20) {
+      throw Errors.badRequest('TOO_MANY_RECIPIENTS', 'At most 20 recipients allowed.');
+    }
+
+    const { buffer, filename } = await this.buildPdf(kind, user, range, rangeKey, input.note);
+    const provider = await this.emailProvider();
+    const subject = `MultiBranch ${kind} report (${rangeKey})`;
+    const text = [
+      `Please find attached the ${kind} report.`,
+      `Period key: ${rangeKey}`,
+      `Generated: ${new Date().toISOString()}`,
+      input.note ? `Note: ${input.note}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const results: Array<{ email: string; messageId: string; provider: string }> = [];
+    for (const to of emails) {
+      const result = await provider.send({
+        to,
+        subject,
+        text,
+        attachments: [{ filename, content: buffer, contentType: 'application/pdf' }],
+      });
+      results.push({ email: to, messageId: result.messageId, provider: result.provider });
+    }
+
+    await this.audit.log({
+      actorUserId: user.id,
+      action: 'REPORT_EMAILED',
+      resourceType: 'Report',
+      resourceId: kind,
+      newValue: {
+        kind,
+        rangeKey,
+        recipientCount: results.length,
+        emails: results.map((r) => r.email),
+        provider: results[0]?.provider,
+        filename,
+      },
+      requestId: ctx.requestId,
+      ipAddress: ctx.ip,
+    });
+
+    return {
+      sent: results.length,
+      filename,
+      provider: results[0]?.provider ?? provider.name,
+      recipients: results,
     };
   }
 

@@ -23,7 +23,17 @@ const serverEnvSchema = z.object({
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
+  EMAIL_PROVIDER: z.enum(['log', 'smtp']).optional(),
+  EMAIL_SMTP_HOST: z.string().optional(),
+  EMAIL_SMTP_PORT: z.coerce.number().int().min(1).max(65535).optional(),
+  EMAIL_SMTP_USER: z.string().optional(),
+  EMAIL_SMTP_PASS: z.string().optional(),
+  EMAIL_SMTP_SECURE: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
+  /** Google Gemini — SMS auto-compose + optional product image enrichment. */
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().optional(),
+  GEMINI_IMAGE_MODEL: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

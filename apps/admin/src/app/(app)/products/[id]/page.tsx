@@ -75,7 +75,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
           {(product.images as string[]).map((src, i) => (
             <div key={`${src}-${i}`} className="h-24 w-24 overflow-hidden rounded-lg border bg-muted">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt="" className="h-full w-full object-cover" />
+              <img src={src} alt="" className="h-full w-full object-contain bg-white p-1" />
             </div>
           ))}
         </div>
